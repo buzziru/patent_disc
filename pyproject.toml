@@ -1,0 +1,18 @@
+[project]
+name = "patent-disc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=5.0.0",
+    "dotenv>=0.9.9",
+    "ipywidgets>=8.1.8",
+    "torch>=2.12.1",
+    "transformers>=5.13.0",
+]
+
+[dependency-groups]
+dev = [
+    "nbdime>=4.0.4",
+]

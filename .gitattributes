@@ -1,0 +1,4 @@
+# Jupyter 노트북: nbdime로 셀 단위 diff/merge (출력 보존)
+# 클론 후 1회: uv run nbdime config-git --enable  (드라이버 등록; 없으면 일반 JSON diff로 폴백)
+*.ipynb	diff=jupyternotebook
+*.ipynb	merge=jupyternotebook
