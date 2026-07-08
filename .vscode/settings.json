@@ -1,0 +1,13 @@
+{
+    "python.analysis.exclude": [
+      "**/.venv/**",
+      "**/venv/**",
+      "**/site-packages/**",
+      "**/__pycache__/**",
+      "**/node_modules/**",
+      "**/data/**",
+      "**/소스코드/**",
+    ],
+    "python.analysis.indexing": true,
+    "python.analysis.userFileIndexingLimit": 2000
+  }
