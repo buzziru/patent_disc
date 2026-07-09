@@ -88,7 +88,8 @@ def evaluate_topk(logits, multihot):          # logits/multihot: [N,188]
 - `**0.8148`을 `0.8249`와 직접 비교하지 않는다.** 두 수치는 **서로 다른 test set**에서 나왔다 — 원본은 `documentId`가 train·val에 걸치는 **누수 위험** 24,525건, 재현은 그 누수를 제거한 11,271건. 누수는 점수를 **부풀리는** 방향으로 작용하므로, 누수를 없앤 재현이 다소 낮게 나오는 것은 예상된 결과이자 더 정직한 수치다.
 - **모델 선택은 재현이 더 견고하다.** 원본 `02` cell-13의 저장 조건 `best_loss < valid_loss or ...`는 valid loss가 **나빠질 때도** 저장하는 결함성 기준이다. 재현은 best `weighted_f1` + EarlyStopping으로 대체해 선택 노이즈를 줄였다.
 - **비의도 편차는 미세하다.** Adam `correct_bias`(원본 False vs HF 기본 True), 다중라벨 문서(~14%)의 정답 단일화 방식 차이(`MultiLabelBinarizer.inverse_transform` vs `argmax`) 정도이며, headline에 미치는 영향은 무시할 수준이다.
-- **과적합 신호와 macro 하락.** 12에폭 완주 시 train focal loss가 ~2e-4까지 내려가 사실상 암기 상태였다(dropout 0.5에도). macro-F1이 상대적으로 더 하락(원본 0.8038 대비 재현 0.7870)한 점은 꼬리 클래스에서의 손해로, 개선 여지가 있는 지점이다. 
+- **과적합 신호와 macro 하락.** 12에폭 완주 시 train focal loss가 ~2e-4까지 내려가 사실상 암기 상태였다(dropout 0.5에도). macro-F1이 상대적으로 더 하락(원본 0.8038 대비 재현 0.7870)한 점은 꼬리 클래스에서의 손해로, 개선 여지가 있는 지점이다.
+- **512 truncation의 실제 손실.** KoBERT 토크나이저 기준 입력 토큰 길이 중앙값이 ~700, 문서의 **~71%가 512를 초과**한다(`notebook/02_02_KoBERT_Tokenizer.ipynb` 실측 → `../data/data.md` 「입력 토큰 길이 분포」). 즉 baseline `0.8148`은 다수 문서의 뒷부분(주로 `claims`)을 버린 채 얻은 수치 — 장문 인코더(A.X-Encoder)가 회복할 상한을 시사한다.
 
 ## 다음 단계·유의
 

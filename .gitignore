@@ -1,7 +1,7 @@
 .env
 .venv/
-/.hf_cache/
-/vendor/
+.hf_cache/
+vendor/
 /data/
 /.vscode/
-/owner/
+owner/

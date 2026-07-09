@@ -1,0 +1,5 @@
+{
+  "env": {
+    "HF_HOME": ".hf_cache"
+  }
+}
