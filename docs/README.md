@@ -29,7 +29,7 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 
 ### 실험·기록 (`experiments/`)
 
-- `[experiments/kobert-baseline.md](./experiments/kobert-baseline.md)` — KoBERT baseline을 우리 test set 위에서 직접 재현해 **비교 기준점**(top-1 weighted-F1) 수립
+- `[experiments/kobert-baseline.md](./experiments/kobert-baseline.md)` — KoBERT baseline을 고정 test set 위에서 직접 재현해 **비교 기준점**(top-1 weighted-F1) 수립
 - (예정) 데이터 EDA/필드 길이 분석, 클래스 불균형 노트, 실험별 설정·결과 요약, 모델/입력 필드 선택 근거
 
 ## 훈련 인프라 요약

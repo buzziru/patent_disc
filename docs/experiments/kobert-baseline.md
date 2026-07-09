@@ -5,8 +5,8 @@
 
 ## 원칙
 
-- **동일 test set 원칙**: KoBERT baseline과 이후 모든 실험(A.X-Encoder, KLUE-RoBERTa)은 **같은 고정 test split**에서 평가한다. 분할 로직 수정 후 재생성한 split이 기준 — **train 201,895 / val 11,162 / test 11,271**(`document_id` 단위). KoBERT baseline은 이 split을 KoBERT 토크나이저로 사전토큰화한 `ingyoun/patent-clean-text-kobert-tokenized`(컬럼 `input_ids`/`attention_mask`/`labels`)를 소비한다. baseline 데이터 분할은 `documentId`가 train·val 양쪽에 존재하는 누수 위험이 있어, 누수 없이 재분할한 우리 split으로 통일한다.
-  - ⚠️ 미토큰화 원본 `ingyoun/patent-clean-text`는 아직 **재분할 이전 vintage(val 11,216 / test 11,217)** 가 Hub에 남아 있다 → A.X-Encoder(04)가 KoBERT와 **동일 test**에서 평가되려면 같은 split으로 재생성·재업로드해야 한다.
+- **동일 test set 원칙**: KoBERT baseline과 이후 모든 실험(A.X-Encoder, KLUE-RoBERTa)은 **같은 고정 test split**에서 평가한다. 분할 로직 수정 후 재생성한 split이 기준 — **train 201,895 / val 11,162 / test 11,271**(`document_id` 단위). KoBERT baseline은 이 split을 KoBERT 토크나이저로 사전토큰화한 `ingyoun/patent-clean-text-kobert-tokenized`(컬럼 `input_ids`/`attention_mask`/`labels`)를 소비한다. baseline 데이터 분할은 `documentId`가 train·val 양쪽에 존재하는 누수 위험이 있어, 누수 없이 재분할한 split으로 통일한다.
+  - ⚠️ 미토큰화 원본 `ingyoun/patent-clean-text`는 아직 **재분할 이전 버전(val 11,216 / test 11,217)** 이 Hub에 남아 있다 → A.X-Encoder(04)가 KoBERT와 **동일 test**에서 평가되려면 같은 split으로 재생성·재업로드해야 한다.
 - **재현 충실도**: 학습 레시피(입력 필드 조합·토크나이저·손실·하이퍼파라미터)를 원본에 최대한 맞춰 baseline의 절대 수치를 정직하게 대변한다. 인프라(apex→torch AMP 등)만 현대화.
 - **지표 일치**: baseline `0.8249`는 **top-1 예측 weighted-F1**이다 → 재현도 동일 계산으로 headline을 낸다.
 
@@ -65,13 +65,13 @@ def evaluate_topk(logits, multihot):          # logits/multihot: [N,188]
 ## 결정·리스크
 
 - **KoBERT 토크나이저 호환성**(가장 큰 리스크): 원본은 `kobert_transformers.get_tokenizer()`/`monologg/kobert`를 썼다. 최신 `transformers`에서 KoBERT 토크나이저(SentencePiece 커스텀)는 로드가 까다로울 수 있다 → **노트북 첫 셀에서 토크나이저 로드·인코딩을 먼저 검증**하고, 안 되면 `skt/kobert-base-v1` 등 대안을 기록. `uv add`로 의존성 고정.
-- **입력 필드 충실도**: baseline은 `ipc_main`(IPC 코드)까지 입력에 넣었다. 재현 땐 동일하게 넣되, 우리 본 실험의 필드 조합과는 별개 변수임을 명시.
+- **입력 필드 충실도**: baseline은 `ipc_main`(IPC 코드)까지 입력에 넣었다. 재현 땐 동일하게 넣되, 본 실험의 필드 조합과는 별개 변수임을 명시.
 - **손실/헤드 편차**: HF 기본 경로로 대체하면 dropout·pooling 세부가 원본과 다를 수 있다 → 선택 시 편차를 이 문서에 남긴다.
-- **top-1 평가의 의미**: 훈련은 멀티레이블이나 headline은 top-1 단일 정확도 성격. 우리 멀티레이블 목표 지표(micro/macro-F1@threshold)와 구분해 해석.
+- **top-1 평가의 의미**: 훈련은 멀티레이블이나 headline은 top-1 단일 정확도 성격. 멀티레이블 목표 지표(micro/macro-F1@threshold)와 구분해 해석.
 
 ## 성공 기준
 
-우리 고정 test(11,271) 위에서 **KoBERT weighted-F1(top-1)** 수치를 산출해 이 문서 하단 표에 기록한다. 이 값이 A.X-Encoder·KLUE-RoBERTa 비교의 **기준점**이 된다.
+고정 test(11,271) 위에서 **KoBERT weighted-F1(top-1)** 수치를 산출해 이 문서 하단 표에 기록한다. 이 값이 A.X-Encoder·KLUE-RoBERTa 비교의 **기준점**이 된다.
 
 
 | 실험          | 입력 필드                | max_len | weighted-F1 | micro-F1 | macro-F1 | P@1/3/5 | 비고  |

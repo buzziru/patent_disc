@@ -1,7 +1,7 @@
 # Lightning AI Jobs — 로컬에서 커스텀 Docker 이미지로 GPU 훈련
 
 > 작업은 **로컬 Windows 머신(CPU 전용)** 에서 하고, GPU 훈련은 **로컬에서 Lightning Python SDK로 비동기 Job을 제출**해 돌린다.
-> 환경 재현은 **우리 `.venv`를 담은 커스텀 Docker 이미지**로 통일한다(스튜디오 스냅샷 대신). 대안 경로 = [Colab](./colab-jobs.md).
+> 환경 재현은 **`.venv`를 담은 커스텀 Docker 이미지**로 통일한다(스튜디오 스냅샷 대신). 대안 경로 = [Colab](./colab-jobs.md).
 >
 > ⚠️ 이전 버전은 "이 세션 = Lightning cloudspace 스튜디오 안"을 전제로 `--studio` 스냅샷 잡을 썼다. 로컬로 옮기면서 **이미지 기반 잡**으로 전환했다. 스튜디오 인터랙티브 세션 진단은 [studio-performance.md](./studio-performance.md)(과거 기록).
 
@@ -22,7 +22,7 @@ Job.run(name, machine, cloud=None, command=None, studio=None, image=None,
         path_mappings=None, max_runtime=None, reuse_snapshot=True, scratch_disks=None)
 ```
 
-우리에게 중요한 인자:
+중요한 인자:
 
 | 인자 | 의미 |
 |---|---|
@@ -69,7 +69,7 @@ LIGHTNING_TEAMSPACE_OWNER=paraise-org  # ⚠️ org slug (paraise 아님)
 
 ## 커스텀 Docker 이미지 만들기
 
-목표: 우리 `.venv`(Python 3.12 + `uv.lock` 고정 — torch cu13, transformers 등)를 그대로 담은 **CUDA 지원 이미지**를 만들어 레지스트리에 올린다.
+목표: `.venv`(Python 3.12 + `uv.lock` 고정 — torch cu13, transformers 등)를 그대로 담은 **CUDA 지원 이미지**를 만들어 레지스트리에 올린다.
 
 - **베이스**: CUDA 런타임 이미지(예: `nvidia/cuda:12.x-runtime-ubuntu22.04`) 위에 Python 3.12 + uv. GPU 머신의 드라이버와 **CUDA 버전을 맞춘다**(torch가 잡는 cu13/cu12 확인).
 - **의존성 고정**: 이미지 안에서 `uv sync --frozen`(또는 `uv pip install -r`)로 `uv.lock`을 재현 → 로컬·Colab·잡 3곳 버전 일치.
@@ -92,7 +92,7 @@ load_dotenv()  # LIGHTNING_USER_ID / LIGHTNING_API_KEY / HUGGINGFACEHUB_API_TOKE
 job = Job.run(
     name="patent-train-001",                       # teamspace 내 고유해야 함
     machine=Machine.L4,                            # OOM이면 Machine.A100
-    image="<user>/patent-train:cu13-py312",        # 우리 커스텀 이미지
+    image="<user>/patent-train:cu13-py312",        # 커스텀 이미지
     command="python -m src.train --config configs/axenc.yaml",
     teamspace=Teamspace(name="ml", org="paraise-org"),  # owner 명시(로그인이 owner 아님)
     env={"HF_TOKEN": os.environ["HUGGINGFACEHUB_API_TOKEN"]},  # 데이터 streaming 인증

@@ -101,11 +101,11 @@ splits = {"train": tmp["train"], "validation": val_test["train"], "test": val_te
 
 for name, part in splits.items():
     part.push_to_hub("<user>/patent-clean-text", split=name)   # 미토큰화 parquet
-# MNO2ID / MNO2LNO 는 리포에 함께 저장(json) — 역매핑·Lno lookup 재현용
+# MNO2ID / MNO2LNO 는 리포에 함께 저장(json) — 역매핑·Lno 매핑 재현용
 ```
 
 > ⚠️ **빈 텍스트 문서**: 업체 baseline은 `abstract`·`claims`가 **둘 다** 비면 제거했다(실측 1건). 같은 규칙을 적용할지 정해 여기서 필터링한다.
-> ⚠️ **baseline 프로토콜 재현**은 별개 이슈 — 위 분할 비율/시드는 우리 자체 비교선용. 공식 0.8249는 절대 기준 아님(`[PROJECT.md](../../PROJECT.md)` 평가 절).
+> ⚠️ **baseline 프로토콜 재현**은 별개 이슈 — 위 분할 비율/시드는 자체 비교선용. 공식 0.8249는 절대 기준 아님(`[PROJECT.md](../../PROJECT.md)` 평가 절).
 
 ---
 
@@ -150,7 +150,7 @@ ds = ds.map(tokenize, remove_columns=[c for c in ds.column_names])
 - **텍스트로 저장**(토큰화 미리 안 함) — 토크나이저·필드조합·`MAX_LEN` 3축을 소비 시 자유화.
 - **가변 길이 저장**(패딩 금지) — 패딩은 Layer 2 collator에서 동적으로.
 - **레이블은 `label_ids` 리스트로 저장**(가변) — 다중-핫 벡터는 소비 시 생성.
-- `**MNO2ID`/`MNO2LNO`(188)**를 리포에 동봉(역매핑·`Mno`→`Lno` lookup 재현).
+- `**MNO2ID`/`MNO2LNO`(188)**를 리포에 동봉(역매핑·`Mno`→`Lno` 매핑 재현).
 - **분할은 `documentId` 단위** — 제공 폴더 누수(7,822건) 회피.
 
 ## 플랫폼별 데이터 반입 요약
