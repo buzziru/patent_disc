@@ -1,5 +1,7 @@
 .env
 .venv/
-.hf_cache/
-소스코드/
+/.hf_cache/
+/vendor/
 /data/
+/.vscode/
+/owner/
