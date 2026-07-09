@@ -1,11 +1,12 @@
 # KoBERT baseline 재현 — 비교 기준점 수립
 
 > **목적**: 공식 `0.8249`를 그대로 쓰지 않고, **KoBERT baseline을 직접 재현**해 장문 인코더(`skt/A.X-Encoder-base`)와의 공정 비교선을 만든다.  
-> 참고 코드(업체 제공): `../../소스코드/{01.data_processing, 02_training_bert, 03_model_test}.ipynb`.
+> 참고 코드(업체 제공): `{01.data_processing, 02_training_bert, 03_model_test}.ipynb`.
 
 ## 원칙
 
-- **동일 test set 원칙**: KoBERT baseline과 이후 모든 실험(A.X-Encoder, KLUE-RoBERTa)은 **같은 고정 test split**에서 평가한다. `ingyoun/patent-clean-text`의 `test`(11,217건)가 그 기준. baseline의 원본 24,525 test는 데이터 부재로 재현 불가하므로 우리 것으로 통일한다.
+- **동일 test set 원칙**: KoBERT baseline과 이후 모든 실험(A.X-Encoder, KLUE-RoBERTa)은 **같은 고정 test split**에서 평가한다. 분할 로직 수정 후 재생성한 split이 기준 — **train 201,895 / val 11,162 / test 11,271**(`document_id` 단위). KoBERT baseline은 이 split을 KoBERT 토크나이저로 사전토큰화한 `ingyoun/patent-clean-text-kobert-tokenized`(컬럼 `input_ids`/`attention_mask`/`labels`)를 소비한다. baseline 데이터 분할은 `documentId`가 train·val 양쪽에 존재하는 누수 위험이 있어, 누수 없이 재분할한 우리 split으로 통일한다.
+  - ⚠️ 미토큰화 원본 `ingyoun/patent-clean-text`는 아직 **재분할 이전 vintage(val 11,216 / test 11,217)** 가 Hub에 남아 있다 → A.X-Encoder(04)가 KoBERT와 **동일 test**에서 평가되려면 같은 split으로 재생성·재업로드해야 한다.
 - **재현 충실도**: 학습 레시피(입력 필드 조합·토크나이저·손실·하이퍼파라미터)를 원본에 최대한 맞춰 baseline의 절대 수치를 정직하게 대변한다. 인프라(apex→torch AMP 등)만 현대화.
 - **지표 일치**: baseline `0.8249`는 **top-1 예측 weighted-F1**이다 → 재현도 동일 계산으로 headline을 낸다.
 
@@ -34,7 +35,7 @@
 
 훈련은 **외부 GPU 잡**(로컬은 CPU 전용). KoBERT는 512/소형이라 **Colab L4로 충분** → `[../infra/colab-jobs.md](../infra/colab-jobs.md)`. 데이터는 HF Hub streaming(`[../data/data-pipeline.md](../data/data-pipeline.md)` Layer 2).
 
-1. **로드**: `load_dataset("ingyoun/patent-clean-text", split=...)` (train/validation/test).
+1. **로드**: 학습 노트북은 사전토큰화된 `load_dataset("ingyoun/patent-clean-text-kobert-tokenized")`(train/test/val, 컬럼 `input_ids`/`attention_mask`/`labels`)를 그대로 소비한다. 아래 2~3(입력 조합·토크나이즈)은 이 데이터셋을 만든 **상류 전처리** 단계이며 학습 노트북에서 재실행하지 않는다(토크나이저는 패딩 용도로만 로드).
 2. **입력 조합**: `build_input = ipc_main + title + abstract + claims`(공백 join) — 원본과 동일하게 4필드 모두 사용(충실도). 빈 필드는 skip.
 3. **토크나이즈**: KoBERT 토크나이저, `max_length=512`, truncation. 다중-핫 라벨(188, float) 생성 → `labels`.
 4. **모델**: 원본 헤드를 재현(`pooled_output → Dropout(0.5) → Linear(188)`), 또는 `AutoModelForSequenceClassification(num_labels=188, problem_type="multi_label_classification", classifier_dropout=0.5)` + **custom FocalLoss**로 대체(편차는 문서에 기록).
@@ -70,7 +71,7 @@ def evaluate_topk(logits, multihot):          # logits/multihot: [N,188]
 
 ## 성공 기준
 
-우리 고정 test(11,217) 위에서 **KoBERT weighted-F1(top-1)** 수치를 산출해 이 문서 하단 표에 기록한다. 이 값이 A.X-Encoder·KLUE-RoBERTa 비교의 **기준점**이 된다.
+우리 고정 test(11,271) 위에서 **KoBERT weighted-F1(top-1)** 수치를 산출해 이 문서 하단 표에 기록한다. 이 값이 A.X-Encoder·KLUE-RoBERTa 비교의 **기준점**이 된다.
 
 
 | 실험          | 입력 필드                | max_len | weighted-F1 | micro-F1 | macro-F1 | P@1/3/5 | 비고  |

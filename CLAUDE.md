@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Hard boundary
 
-- **공식 baseline F1 0.8249를 절대 기준으로 비교하지 말 것** — 이는 **top-1 예측의 weighted-F1**(full test 24,525건, `소스코드/03_model_test.ipynb` 실측)이며 서브셋 값이 아니다. baseline 실제 입력 데이터가 리포에 없어 exact 재현 불가 → **자체 test 고정 + KoBERT 자체 재현**으로 비교선을 세운다(`PROJECT.md` 평가 절).
+- **공식 baseline F1 0.8249를 절대 기준으로 비교하지 말 것** — 이는 **top-1 예측의 weighted-F1**(full test 24,525건 실측)이다. baseline 데이터 분할은 **`documentId`가 train·val 양쪽에 존재하는 데이터 누수** 위험이 있어, **누수 없는 데이터셋을 새로 생성**하고 **자체 test 고정 + KoBERT 자체 재현**으로 비교선을 세운다(`PROJECT.md` 평가 절).
 - **독립된 두 분류 헤드(대분류·중분류 별도 예측)를 만들지 말 것** — 계층 비일관성을 유발한다. Mno 다중 예측 + `Mno`→`Lno` lookup으로 해결.
 - **멀티모달(도면 이미지)은 스코프 밖.**
 - 평탄화된 분포(중분류당 1,300~2,600건)는 실제 출원 분포와 다르다 — 결과에 한계로 명시.
