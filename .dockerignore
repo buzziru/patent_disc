@@ -1,0 +1,17 @@
+# 빌드 컨텍스트에서 제외 — 이미지 부풀림·비밀 유출·AI Hub 재배포 제약 방지
+.env
+.venv/
+data/                    # AI Hub 71531 zip(419MB, 재배포 제약) — 이미지에 절대 금지
+notebook_output/
+outputs/
+checkpoints/
+wandb/
+.hf_cache/
+owner/                   # 베이스라인 참고 자료 — 이미지에 불필요
+docs/
+.git/
+.gitignore
+.vscode/
+__pycache__/
+*.ipynb_checkpoints
+*.pyc

@@ -3,16 +3,17 @@ name = "patent-disc"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "datasets>=5.0.0",
     "dotenv>=0.9.9",
     "ipywidgets>=8.1.8",
+    "ipykernel>=7.3.0",
     "iterative-stratification>=0.1.9",
     "matplotlib>=3.11.0",
     "scikit-learn>=1.9.0",
     "sentencepiece>=0.2.1",
-    "torch>=2.12.1",
+    "torch>=2.11,<2.12",
     "transformers>=5.13.0",
 ]
 
@@ -20,3 +21,18 @@ dependencies = [
 dev = [
     "nbdime>=4.0.4",
 ]
+# GPU 전용(런팟/Colab/Lightning 이미지에서만). 프리빌트 flash-attn 휠 —
+# cu12 + torch2.11 + cp312 + linux ABI 고정. 로컬 Windows/CPU sync는 마커로 스킵.
+gpu = [
+    "flash-attn @ https://github.com/lesj0610/flash-attention/releases/download/v2.8.3-cu12-torch2.11/flash_attn-2.8.3+cu12torch2.11cxx11abiTRUE-cp312-cp312-linux_x86_64.whl ; sys_platform == 'linux'",
+]
+
+# linux(=이미지)에선 torch를 cu12 빌드로 받는다 — PyPI 기본 torch 2.11은 cu13이라
+# cu12 flash-attn 휠과 CUDA 메이저가 어긋난다. 로컬 Windows는 PyPI CPU torch 유지.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]

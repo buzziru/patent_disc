@@ -46,7 +46,8 @@
 1. **세션 시작**: `colab new -s <name> --gpu L4`. ⚠️ `-s <name>`을 항상 지정(생략 시 랜덤 hex = 추적 불가).
 2. **실행**: `colab exec -s <name> -f nb.ipynb`(커널 state 지속 → 셀/노트북 나눠 점진 실행 가능). **끝나면 반드시 `colab stop -s <name>`.**
 3. **의존성**: `colab install -s <name> transformers datasets accelerate ...` 또는 노트북 상단 `!pip`. torch가 잡은 GPU 확인(`torch.cuda.get_device_name(0)` → L4=sm_89).
-   - 로컬 환경은 **Python 3.12 + `uv.lock`**(현재 `torch 2.12.1+cu130`, `transformers 5.12.1`)으로 고정 — Colab과 버전을 맞추기 위함. VM에서도 같은 버전을 설치해 재현성 확보.
+   - 로컬 환경은 **Python 3.12 + `uv.lock`**(현재 `torch 2.12.1+cu130`)으로 고정 — Colab과 버전을 맞추기 위함. VM에서도 같은 버전을 설치해 재현성 확보.
+   - **transformers 실측(2026-07-13)**: **Colab = `5.12.1`**, 로컬 `.venv` = `5.13.0`(둘 다 5.x 계열이라 동작 regime은 동일 — 아래 「ModernBERT + FA2」 참조). 훈련 런은 **버전을 pin**해 regime을 고정할 것.
    - ⚠️ **Colab의 실제 Python/torch를 확인**(`import sys; print(sys.version)`, `torch.__version__`)해 3.12 가정과 cu13 드라이버 호환을 검증할 것. 어긋나면 `pyproject.toml`의 `requires-python`을 Colab 버전에 맞춘다.
 4. **VM측 시크릿(HF 토큰 등)**: `google.colab.userdata.get()`는 **헤드리스에서 못 쓴다** — 시크릿의 *notebook access* 토글이 UI 전용이고, `colab exec` 세션엔 권한을 부여할 노트북 ID가 없어 `NotebookAccessError`가 난다(웹 확인: colabtools #4220 / colab-vscode #215). **대안 = 커널 env 주입**: 커널 state가 `exec` 간 유지되므로, 노트북 실행 **전에** 토큰을 커널에 심는다(노트북엔 하드코딩·userdata 셀 금지).
    ```bash
@@ -103,6 +104,17 @@ KoBERT 9.6h 런을 헤드리스 `colab exec`로 **2회** 시도 → 둘 다 **~2
 - **실측 처리량**(참고): KoBERT(`monologg/kobert`, 92M) batch 8 · seq 512 · fp16 기준 **L4 ≈ 8.5~8.8 it/s(≈48분/epoch)**, 2080 Ti ≈ 4.67 it/s(가공업체 실측). 12에폭(≈30.3만 step) 풀런 ETA L4 **~9.6h**(early stop로 단축).
 - **OOM 시**: `batch_size`↓ / `max_length`(토큰 길이)↓ / gradient accumulation로 유효 배치 유지 / gradient checkpointing / fp16·bf16 mixed precision / 입력 필드 축소(상세설명 제외 등). config로 override.
 - 코드 변경 시 최신 스크립트를 재전송(`colab exec -f`는 매번 로컬 파일을 읽으므로 자동 최신).
+
+### ModernBERT + FlashAttention-2 — unpadding 범위는 transformers 버전에 따라 뒤집힌다
+
+장문 배칭 전략(특히 `group_by_length`)의 타당성이 여기에 걸려 있어 실측으로 확인했다(`transformers 5.13.0` 소스 직독).
+
+- **5.x 계열(현재 Colab 5.12.1 / 로컬 5.13.0)**: ModernBERT가 리팩터링돼 **모델 레벨 unpadding이 없다**. `ModernBertModel.forward`는 `hidden_states`를 `[batch, seq, hidden]` **패딩 상태로** embedding → 22개 layer → final_norm까지 흘린다. unpadding은 **FA2 attention 커널 내부에서만** 일어난다(`modeling_flash_attention_utils`의 `unpad_input` → `flash_attn_varlen_func` → `pad_input`). `Wqkv`조차 패딩된 텐서에 적용된다.
+  - → **attention만 패딩이 공짜**이고, embedding·projection·**MLP**·norm·residual은 패딩된 채 계산된다. ModernBERT는 `local_attention: 128` + `global_attn_every_n_layers: 3`이라 attention이 원래 싸므로 **FLOPs·활성 메모리는 MLP/projection이 지배** → **패딩 낭비가 실재**한다.
+  - → **`group_by_length=True`가 유효하다.** 게다가 패딩 구간 메모리는 `batch × max_len_in_batch`라, random 샘플링도 배치에 장문 하나만 섞이면 같은 peak를 친다 → **group_by_length가 peak를 올리지 않고 평균만 낮춘다.**
+- **4.4x~4.5x 계열**: `_unpad_modernbert_input`/`_pad_modernbert_output`이 `forward` 최상단에 있어 **전 forward가 flat unpadded 시퀀스**로 돈다. 이 regime에선 패딩이 전 구간 공짜라 **`group_by_length`는 무의미**하고, all-long 배치가 토큰 합 peak를 올려 오히려 해롭다.
+- ⚠️ 즉 **버전을 pin하지 않으면 어느 regime인지 모른 채 장시간 런을 태우게 된다.**
+- 부수 확인: `classifier_pooling: "mean"`은 5.x에서 **masked mean**(attention_mask로 나눔)이라 패딩이 pooling을 오염시키지 않는다. `reference_compile`은 5.x에서 **제거된 dead key** → torch.compile 재컴파일 이슈 없음.
 
 ## Safety·복구
 
