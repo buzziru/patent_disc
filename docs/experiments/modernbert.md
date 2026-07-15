@@ -9,6 +9,7 @@
 - **모델**: `skt/A.X-Encoder-base` (한국어 ModernBERT, 컨텍스트 16,384, vocab 49,999, apache-2.0). 토크나이저 revision `9708f9c4`로 pin.
 - **데이터**: `ingyoun/patent-clean-text-modernbert-tokenized` (train 201,895 / val 11,162 / test 11,271). 사전토큰화 완료본을 그대로 소비 — 입력 조합·토크나이즈는 상류(`notebook/04_01_Prep_ModernBERT.ipynb`)에서 1회 수행. **truncation 없이 최대 10,523토큰**으로 저장돼 있어 `max_length`는 소비 시점(훈련 config)에서 건다.
 - **입력 필드**: `invention_title + ipc_main + abstract + claims` (공백 join, 빈 필드 skip) — KoBERT baseline과 동일 필드 집합.
+- ⚠️ **토크나이저 특수토큰 함정**(실측): A.X-Encoder는 시퀀스를 **`<s>`(0) … 본문 … `<\s>`(1)** 로 감싼다. 마감 토큰은 **`eos_token_id`(=1)**이며, **`tokenizer.sep_token_id`는 `<sep>`(=3)으로 실제 마감 토큰이 아니다** — 절단 복원에 이걸 쓰면 엉뚱한 토큰이 붙는다. 사전토큰화본을 `max_length`로 자를 때 단순 리스트 슬라이싱(`x[:max_len]`)은 꼬리의 `<\s>`를 버리므로(HF 표준 truncation은 보존) **`x[:max_len-1] + [eos_token_id]`로 마감**한다. 앞의 `<s>`는 index 0이라 슬라이싱해도 보존된다. 영향 자체는 작다(8,192 초과 문서가 1% 미만 + `classifier_pooling: "mean"`이라 토큰 1개 손실이 평균에 미치는 영향 미미).
 - **타깃**: 문서별 188 멀티핫(`labels`), sigmoid + BCE 계열 손실(baseline 정합을 위해 focal 옵션 포함 검토).
 - **고정 test 원칙**: KoBERT와 **같은 test split·같은 `kobert_len` 길이 bin** 위에서 평가(`../data/data.md` 「길이 슬라이스 bin」). 비교 축을 흔들지 않기 위해 bin은 A.X 토큰이 아니라 KoBERT 토큰으로 고정한다.
 - **평가**: `notebook/03_02_Metric.ipynb`(멀티라벨 micro/macro/sample-F1 + 길이 bin + 앵커 top-1 + LRAP/R-Precision). `tag`를 `axencoder_len{max_len}` 등으로 실험마다 유일하게 잡아 로짓 캐시 오염을 막는다.
@@ -39,6 +40,33 @@ full length는 극소수 장문(p99≈3,621, max 10,523)이 배치에 섞일 때
 - **exp1 vs exp2**: **가장 중요한 ablation.** 같은 모델·같은 토크나이저에서 컨텍스트 길이만 다르므로, 개선분 중 **컨텍스트 길이의 순수 기여**를 분리한다. exp2가 KoBERT를 이미 이기면 개선의 상당 부분은 길이가 아니라 모델/토크나이저 우위라는 뜻(가설 반증 신호).
 - **exp1 vs exp3**: **형식 구조화의 기여.** 같은 길이에서 입력 포맷만 다르므로 exp3의 값은 **오로지 exp1과의 delta로만** 해석된다 — exp3은 단독으로 해석되는 실험이 아니다.
 - **길이 bin Δ(A.X − KoBERT)**: B0(≤512)에서 ≈0, B1→B3로 단조 증가하면 장문 가설 지지. 전 구간 균일 개선이면 길이 효과가 아니라 모델 자체 성능차(`../data/data.md` 「검증 로직」).
+
+## exp1 실측 결과 (full length 8192)
+
+> 실행: `notebook/04_02_ModernBERT_MaxLen.ipynb`, 실행 결과 `notebook_output/04_02_ModernBERT_MaxLen_output.ipynb`, 테스트 지표 `output/modernbert-patent-len8192_test_metrics.json`.
+
+**구성**(KoBERT 재현과 레시피 정합 — 길이·모델·토크나이저 외 변수 고정): `max_len=8,192`(>8,192 극소수 `x[:max_len-1]+[eos]`로 마감), 손실 `FocalLoss(alpha=0.25, gamma=2)`, lr 3e-5, 유효 배치 8(micro-batch×grad_accum로 512 런과 등화), `attn_implementation="flash_attention_2"`, `group_by_length`, 12에폭(global_step 302,844). **비용은 두 층위로 구분해 읽는다.** *내재 연산시간*(`train_runtime`)은 33,291s(≈9.25h) — KoBERT 재현 27,037s(≈7.5h) 대비 +23%로, 8,192 full-length 커버리지를 얻고도 증가가 완만하다(median 628토큰·꼬리만 장문 + FA2 + `group_by_length`, 코퍼스 FLOPs ~2배). *운영 wall-clock*은 이와 다르다: 두 런 모두 Colab 세션 한계로 중단·재개를 반복했고, 장문인 exp1은 재시작·체크포인팅 부담이 커 벽시계가 **≈29h(KoBERT ≈10h)**로 훨씬 컸다. 즉 한계 연산비는 낮아도 **반복 실행의 운영 비용은 작지 않았다** — 비용을 인용할 때 둘을 섞지 않는다.
+
+### 고정 test(11,271) 비교
+
+| 축 | 지표 | KoBERT (기준선) | ModernBERT exp1 | Δ | 상대 오차감소 |
+| --- | --- | --- | --- | --- | --- |
+| 멀티라벨 (τ=0.5) | micro-F1 | 0.8502 | **0.8684** | +0.0182 | 12.1% |
+| | macro-F1 | 0.8470 | **0.8648** | +0.0178 | 11.6% |
+| | sample-F1 | 0.8656 | **0.8825** | +0.0169 | 12.6% |
+| 앵커 | top-1 weighted-F1 | 0.8148 | **0.8257** | +0.0109 | — |
+| 참고 | empty rate | 1.16% | 1.34% | +0.18pt | — |
+
+두 축은 계산이 달라 서로 뺄셈하지 않고 각 축에서 비교한다. exp1이 **두 축 모두** baseline을 이겼다(headline: 멀티라벨 micro +1.8pt, 앵커 +1.1pt). (참고: 앵커 0.8257이 공식 0.8249를 넘지만 **서로 다른 test set**이라 직접 비교 대상 아님.)
+
+### 해석
+
+- **개선은 잡음이 아니라 견고하다.** 4개 지표(micro/macro/sample/anchor)가 일관되게 상승했고 상대 오차감소가 세 멀티라벨 지표에서 ~12%로 나란하다. 특히 KoBERT 재현에서 원본(0.8038) 아래로 내려갔던 **macro가 반전**(0.7870 → 0.8648)해, 꼬리 클래스 손해가 해소됐다.
+- **이득이 truncation 상한에 맞닿는다.** KoBERT의 **B0(≤512, 잘림 없음) micro는 0.8685**였는데(`../experiments/kobert-baseline.md` bin 표) exp1 **전체 micro는 0.8684**로 사실상 동일하다. 즉 장문 인코더가 전체 test를 "잘림 없는 짧은 문서" 수준으로 끌어올린 그림이다. 이 데이터셋은 KoBERT가 bin 전 구간을 0.869→0.821로 완만히만 하락(최악 B3는 549건)해 **길이가 회복 가능한 이론적 상한 자체가 크지 않다** — +1.8pt은 그 상한에 근접한 값이며, "장문이면 더 컸어야"라는 직관은 이 분포의 truncation 헤드룸을 과대평가한 것이다.
+- **비용은 "저비용"으로 단정하지 않는다.** 한계 연산비는 완만하나(FLOPs ~2배, `train_runtime` +23%), 중단·재개 반복으로 exp1 운영 wall-clock은 ≈29h(KoBERT ≈10h)로 컸다. 연산 효율(장문의 낮은 한계비용)과 iteration 비용(긴 벽시계·재시작 부담)은 층위가 달라 나눠 기록한다.
+- **개선의 원인(길이 vs 모델)은 아직 단정 불가 — aggregate만으로는 양쪽이 동률로 정합한다.** 전체 micro 0.8684가 KoBERT B0 상한(0.8685)에 닿은 것은 두 시나리오와 **똑같이** 부합한다: (a) 장문이 B1~B3의 truncation 손실을 회복해 상한으로 수렴, (b) 더 강한 모델이 B0 포함 전 구간을 균일하게 +1.8pt 끌어올림. aggregate 한 점으로는 (a)와 (b)를 가를 수 없다. 특히 A.X-Encoder는 vocab 49,999로 KoBERT SentencePiece(≈8,002)보다 한국어 분절이 크게 개선돼 있어 **길이와 무관한 모델·토크나이저 기여만으로도 상당 폭이 설명될 수 있다** — 따라서 "시퀀스 길이가 큰 원인"이라는 결론은 현재 근거로는 이르다. **exp2(512 control)**와 **bin별 Δ(A.X − KoBERT)** 표가 이를 가른다: 길이 효과면 Δ가 B0≈0 → B1~B3 증가, 모델 효과면 Δ가 전 구간 균일. → exp2 우선 실행.
+- **empty rate 소폭 상승(1.16→1.34%).** τ=0.5가 최적이 아닐 여지 — val 임계 튜닝을 성능 레버로 남긴다.
+- **과적합.** train focal loss가 1.3e-5까지 내려가(KoBERT 재현 1.96e-4보다 더 낮음) 사실상 암기 상태 — 정규화·조기중단 여지가 있으나 test 지표가 이미 개선된 상태라 후순위.
 
 ## 실험 3(형식) 시행 판단
 
