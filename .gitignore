@@ -5,3 +5,9 @@ vendor/
 /data/
 /.vscode/
 owner/
+
+# 로컬 실행 산출물(노트북·훈련) — 실수 커밋 방지
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+wandb/
