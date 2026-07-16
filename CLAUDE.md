@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **1인칭 지칭('우리' 등)을 쓰지 않는다.** 주체를 내세우지 말고 사실·절차로 서술한다(예: "우리는 재분할한다" → "`documentId` 단위로 재분할한다").
 - **한영 혼용 표현을 쓰지 않는다.** 단, 영어 기술용어를 전부 한국어로 옮기라는 뜻은 아니다 — `split`·`test`·`val`·`baseline`처럼 통용되는 일반 용어와 `KoBERT`·`ModernBERT`처럼 대체 불가한 고유명은 그대로 둔다. `vintage`·`lookup`처럼 자연스러운 한국어 대응어가 있는 표현만 바꾼다(vintage→스냅샷/버전, lookup→조회/매핑).
+- **수정 이력을 문서에 남기지 않는다.** 틀린 사항을 지적받아 고칠 때 "원래 X였으나 Y로 정정", "모순 제거", "이전 값 삭제" 같은 변경 서술을 쓰지 말고 **최종 내용만** 사실로 서술한다(변경 경위는 커밋·대화에 남고, 문서엔 결과만 남긴다).
 
 ## Hard boundary
 
