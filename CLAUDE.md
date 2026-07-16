@@ -39,7 +39,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 데이터 레이아웃·JSON 스키마·조인·카테고리 | `docs/data/data.md` |
 | 데이터 파이프라인(zip→정제 텍스트→HF Hub→소비 시 토큰화) | `docs/data/data-pipeline.md` |
 | KoBERT baseline 재현(비교 기준점) | `docs/experiments/kobert-baseline.md` |
-| A.X-Encoder(ModernBERT) 실험 계획·프로토콜(full/512/형식) | `docs/experiments/modernbert.md` |
+| A.X-Encoder(ModernBERT) 실험 계획·프로토콜·공통 함정(dtype·평가 절단) | `docs/experiments/modernbert.md` |
+| A.X-Encoder 실험별 실측(exp1 8192 / exp2 512, 단일 모델 지표) | `docs/experiments/modernbert-results.md` |
+| A.X-Encoder 교차 비교·결론(길이 vs 모델 분해·3모델 bin·멀티라벨 비교) | `docs/experiments/modernbert-comparison.md` |
 | GPU 훈련 — Colab (`colab` CLI, 기본 경로) | `docs/infra/colab-jobs.md` |
 | GPU 훈련 — Lightning Job (로컬 SDK + 커스텀 Docker 이미지) | `docs/infra/lightning-jobs.md` |
 | 문서 인덱스·환경 값(org/teamspace/studio) | `docs/README.md` |
