@@ -32,7 +32,9 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 - `[experiments/kobert-baseline.md](./experiments/kobert-baseline.md)` — KoBERT baseline을 고정 test set 위에서 직접 재현해 **비교 기준점**(top-1 weighted-F1 + 멀티라벨·길이구간) 수립
 - `[experiments/modernbert.md](./experiments/modernbert.md)` — A.X-Encoder(ModernBERT) 실험 **계획·프로토콜·비교 축**(허브: 공통 프로토콜·dtype/절단 함정·실험 목록)
 - `[experiments/modernbert-results.md](./experiments/modernbert-results.md)` — A.X-Encoder **실험별 실측**(exp1 full 8192 / exp2 512 control)
-- `[experiments/modernbert-comparison.md](./experiments/modernbert-comparison.md)` — A.X-Encoder **교차 비교·결론**(길이 vs 모델 분해 · 3모델 bin · 멀티라벨 지표 비교)
+- `[experiments/modernbert-comparison.md](./experiments/modernbert-comparison.md)` — A.X-Encoder **교차 비교·결론**(길이 vs 모델 분해 · 3모델 bin · 커버리지 기제 실측 · 멀티라벨 지표 비교)
+- `[experiments/klue-roberta.md](./experiments/klue-roberta.md)` — **KLUE-RoBERTa-large 대조군** 계획·프로토콜(512 창 절단 필수 · 절단 규칙 · 크기·토크나이저 confound)
+- `[experiments/no-train-analysis.md](./experiments/no-train-analysis.md)` — **무훈련 분석 3종**(오류 분해 sibling/cross-Lno · 임계값 튜닝 — 계획 / 토크나이저 fertility·coverage — 완료) + 로짓 재확보 절차
 - (예정) 데이터 EDA/필드 길이 분석, 클래스 불균형 노트, 실험별 설정·결과 요약, 모델/입력 필드 선택 근거
 
 ## 훈련 인프라 요약

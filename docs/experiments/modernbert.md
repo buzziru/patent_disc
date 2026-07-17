@@ -7,7 +7,7 @@
 ## 현재 결론 (요약)
 
 - **exp1(8192)이 KoBERT 재현선을 넘었다**: 멀티라벨 micro 0.8502 → **0.8685**(+1.83pt), 앵커 top-1 weighted 0.8148 → **0.8256**.
-- **개선 분해**(exp2 512 control): 모델·토크나이저 효과 **+0.99pt** + 컨텍스트 길이 효과 **+0.84pt**(대략 절반씩). 길이 효과는 문서가 길수록 커져 최장 문서군(B3)에서 최대(+2.64pt).
+- **개선 분해**(exp2 512 control): **컨텍스트 길이에 +0.84pt**(exp1−exp2 — 같은 모델·같은 토크나이저라 통제된 귀속), **모델 성분 +0.99pt**(exp2−KoBERT — 아키텍처·사전학습·토크나이저 + 512 창에서의 커버리지 우위가 섞인 값이며 더 쪼개지 않는다). 창 확장 효과는 문서가 길수록 커져 최장 문서군(B3)에서 최대(+2.64pt).
 - **멀티라벨 전 지표에서 exp1 > exp2 > KoBERT 단조**(F1 micro/macro/sample · LRAP · R-Precision · P@k). 상세는 [`modernbert-results.md`](./modernbert-results.md)·[`modernbert-comparison.md`](./modernbert-comparison.md).
 
 ## 공통 프로토콜 (모든 실험 고정)
@@ -21,6 +21,7 @@
 - **고정 test 원칙**: KoBERT와 **같은 test split·같은** `kobert_len` **길이 bin** 위에서 평가(`../data/data.md` 「길이 슬라이스 bin」). 비교 축을 흔들지 않기 위해 bin은 A.X 토큰이 아니라 KoBERT 토큰으로 고정한다.
 - **평가**: `notebook/03_02_Metric.ipynb`(멀티라벨 micro/macro/sample-F1 + 길이 bin + 앵커 top-1 + LRAP/R-Precision). `tag`를 `axencoder_len{max_len}` 등으로 실험마다 유일하게 잡아 로짓 캐시 오염을 막는다.
 - ⚠️ **평가 입력도 훈련과 같은 `max_len`으로 절단**(실측): 사전토큰화 데이터셋은 truncation 없이 전체 토큰(최대 10,523)을 담으므로, 평가 시 test를 **훈련과 동일한 `max_len`으로 절단**(`x[:max_len-1]+[eos]`)한 뒤 추론한다. 이 절단을 빠뜨리면 512 모델에 전체 문서가 들어가 훈련 창과 어긋난 무의미한 평가가 된다(exp2에서 특히 치명적 — test의 ~72%가 512 초과). KoBERT는 512로 사전토큰화된 데이터를 써 절단이 불필요했으나 ModernBERT는 무절단본이라, 평가 노트북(`04_03`·`05_02`)이 `_truncate`로 훈련 `_prep`과 동일 절단을 재현한다.
+- ⚠️ **추론 `batch_size`는 지표 4번째 자리를 바꾼다**(실측): 평가·로짓 덤프는 **batch 8 고정**(`03_02`·`04_03`·`05_02`·`06_00` 전부 동일). `EvalCollator`의 동적 패딩(`padding=True`)이 배치 내 최장 문서에 맞추므로, 배치 크기를 바꾸면 패딩량과 행렬 shape이 바뀌고 fp16·bf16 autocast의 누산 순서·cuBLAS 커널 선택이 달라져 **로짓이 ~1e-4 흔들린다**. 그 자체는 무해하나 τ=0.5 경계와 top-1 argmax에서 문서 몇 건이 뒤집혀 지표가 4자리에서 어긋난다. 로짓 재덤프(`06_00`)에서 batch를 64로 올린 두 모델만 SSOT와 불일치했고(mb512 anchor F1 0.8203→0.8199, micro 0.8601→0.8600), batch 8을 유지한 `modernbert-patent-len8192`만 5개 지표 전부 4자리 일치했다. 이 대조는 **체크포인트·절단·행 순서·dtype 경로가 정확하다는 증거**이기도 하다 — 아울러 토크나이저를 ckpt가 아닌 base(`skt/A.X-Encoder-base` revision `9708f9c4`)에서 로드해도 동일 결과임을 확인(8192 모델이 base 토크나이저로 완전 일치).
 - **인프라**: Colab L4 기본(장문은 메모리를 많이 써 24GB 안전, `../infra/colab-jobs.md`). 필요 시 Lightning Job.
 
 ## 실험 목록
@@ -72,6 +73,14 @@ full length는 극소수 장문(p99≈3,621, max 10,523)이 배치에 섞일 때
 
 - **손실 함수**: BCE vs focal(baseline과 정합). baseline이 focal(alpha=0.25, gamma=2)이므로 우선 정합, 이후 BCE 대조.
 - **형식 스키마 확정**(exp3 진행 시): 항목명 마커 토큰 형태(`[청구항]` 등 리터럴 vs special token 추가) 결정. special token 추가 시 임베딩 확장 필요.
-- **임계 튜닝**: τ=0.5가 최적이 아니라는 신호(empty rate·랭킹>임계결정) — val 임계 튜닝을 성능 레버로 남긴다([`modernbert-comparison.md`](./modernbert-comparison.md) 「멀티라벨 지표 비교」).
-- **라벨 개수별 분해**: 단일 vs 다라벨(≥2) 성능 분리는 아직 미측정 — 평가 노트북에 label-cardinality bin 추가 여지.
+- **임계 튜닝**: τ=0.5가 최적이 아니라는 신호(empty rate·랭킹>임계결정) — val 임계 튜닝을 성능 레버로 남긴다. 실행 계획은 [`no-train-analysis.md`](./no-train-analysis.md) B.
+- **라벨 개수별 분해**: 단일 vs 다라벨(≥2) 성능 분리는 아직 미측정. 실행 계획은 [`no-train-analysis.md`](./no-train-analysis.md) A(오류 분해와 함께 수행).
 - `max_length`**·장문 처리는 확정**(위 「장문 처리 전략」: FA2 + `group_by_length` + `max_length=8,192` + gradient accumulation 유효 배치 등화, packing 제외).
+
+## 기각된 후보
+
+- **토크나이저 도메인 튜닝(vocab 확장·특허 코퍼스 재학습) — 기각.** 근거는 세 가지다.
+  1. **exp1의 coverage가 이미 1.0000**(test 전량, `notebook/06_03` 실측). 토크나이저를 압축적으로 만들어 토큰 수를 줄여도 8,192 창에 **추가로 담을 본문이 없다** — 커버리지 채널이 소진된 상태라 이득의 경로가 없다. 512 모델에는 의미가 있으나 512는 control이지 결과물이 아니다.
+  2. **A.X 과분절은 실측되지 않았다.** 과분절은 KoBERT(vocab 8,002)의 열화 신호로 관측된 것이고, A.X는 KLUE-RoBERTa와 동급이다(어절당 2.503 vs 2.471조각, 3+조각 37.81% vs 36.07%). 개선 여지의 근거가 없다.
+  3. **어절당 조각 수는 과분절과 정상 형태소 분절을 구분하지 못한다.** 한국어 어절은 어간+조사 구조라 `반도체의` → `[반도체][##의]`(2조각)는 올바른 분절이다. 2.503이 과분절인지 형태소 바닥에 가까운지 이 지표로는 판정할 수 없어, 튜닝의 목표치조차 세울 수 없다.
+- 비용·부작용도 불리하다: vocab 확장은 새 토큰 임베딩이 랜덤 초기화라 특허 코퍼스 continued MLM pretraining 없이는 정착하지 않고(exp3 ~10h를 크게 상회), 모델이 바뀌어 exp1·exp2·exp3의 비교선이 오염된다.
