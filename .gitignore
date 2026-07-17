@@ -5,9 +5,13 @@ vendor/
 /data/
 /.vscode/
 owner/
+pyrightconfig.json
 
 # 로컬 실행 산출물(노트북·훈련) — 실수 커밋 방지
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
 wandb/
+
+# 로짓 덤프 — 재생성 가능한 데이터(notebook/06_00). output/은 metrics json만 추적한다
+output/*.npy

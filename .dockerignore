@@ -15,3 +15,5 @@ docs/
 __pycache__/
 *.ipynb_checkpoints
 *.pyc
+pyrightconfig.json
+.claude/

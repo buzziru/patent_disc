@@ -1,24 +1,24 @@
 # 훈련 과정 성능 곡선 (KoBERT / ModernBERT)
 
-두 baseline 실측 훈련의 에폭·스텝별 성능을 종합한 참고 자료다. 다른 실험을 돌릴 때 **같은 스텝 구간에서 손실·F1이 어디쯤 와야 정상인지** 판단하는 기준선으로 쓴다. 원본은 `notebook_output/03_01_Baseline_Train_KoBERT_colab_output.ipynb`, `notebook_output/04_02_ModernBERT_MaxLen_output.ipynb`.
+세 실측 훈련(KoBERT · A.X-Encoder 8192 · A.X-Encoder 512)의 에폭·스텝별 성능을 종합한 참고 자료다. 다른 실험을 돌릴 때 **같은 스텝 구간에서 손실·F1이 어디쯤 와야 정상인지** 판단하는 기준선으로 쓴다. 원본은 `notebook_output/03_01_Baseline_Train_KoBERT_colab_output.ipynb`, `notebook_output/04_02_ModernBERT_MaxLen_output.ipynb`, `notebook_output/05_01_ModernBERT_Len512_output.ipynb`.
 
 ## 공통 조건
 
-| 항목 | KoBERT baseline | ModernBERT (A.X-Encoder) |
-|------|-----------------|--------------------------|
-| 모델 | `monologg/kobert` | `skt/A.X-Encoder-base` |
-| max_len | 512 | 8192 |
-| 문제 유형 | multi-label 188-class (sigmoid+BCE, Focal α=0.25 γ=2) | 동일 |
-| learning_rate | 3e-5 | 3e-5 |
-| 유효 배치 | 8 (micro 8) | 8 (micro 4 × grad_accum 2) |
-| epochs | 12 | 12 |
-| warmup_ratio / weight_decay | 0.1 / 0.01 | 0.1 / 0.01 |
-| classifier_dropout | 0.5 | 0.5 |
-| train / val / test | 201,895 / 11,162 / 11,271 | 동일 데이터, ModernBERT 토크나이즈 |
-| eval 주기 | 에폭마다 (12 회) | 12,618 스텝마다 = 0.5 에폭 (24 회) |
-| 총 optimizer step | 302,844 | 302,844 |
+| 항목 | KoBERT baseline | ModernBERT exp1 (8192) | ModernBERT exp2 (512) |
+|------|-----------------|------------------------|-----------------------|
+| 모델 | `monologg/kobert` | `skt/A.X-Encoder-base` | `skt/A.X-Encoder-base` |
+| max_len | 512 | 8192 | 512 |
+| 문제 유형 | multi-label 188-class (sigmoid+BCE, Focal α=0.25 γ=2) | 동일 | 동일 |
+| learning_rate | 3e-5 | 3e-5 | 3e-5 |
+| 유효 배치 | 8 (micro 8) | 8 (micro 4 × grad_accum 2) | 8 (micro 8) |
+| epochs | 12 | 12 | 12 |
+| warmup_ratio / weight_decay | 0.1 / 0.01 | 0.1 / 0.01 | 0.1 / 0.01 |
+| classifier_dropout | 0.5 | 0.5 | 0.5 |
+| train / val / test | 201,895 / 11,162 / 11,271 | 동일 데이터, ModernBERT 토크나이즈 | 동일 |
+| eval 주기 | 에폭마다 (12 회) | 12,618 스텝마다 = 0.5 에폭 (24 회) | 동일 |
+| 총 optimizer step | 302,844 | 302,844 | 302,844 |
 
-- 두 실험은 **서로 다른 메트릭 세트**를 로깅한다. KoBERT는 top-1 기반(Weighted/Micro/Macro F1, P@k), ModernBERT는 multi-label 기반(Micro/Macro/Sample F1, Empty Rate) + baseline 비교용 **Anchor Weighted F1**(top-1 weighted). **실험 간 비교는 Anchor Weighted F1 ↔ KoBERT Weighted F1로만** 한다.
+- KoBERT와 ModernBERT는 **서로 다른 메트릭 세트**를 로깅한다(exp1·exp2는 같은 ModernBERT 세트). KoBERT는 top-1 기반(Weighted/Micro/Macro F1, P@k), ModernBERT는 multi-label 기반(Micro/Macro/Sample F1, Empty Rate) + baseline 비교용 **Anchor Weighted F1**(top-1 weighted). **KoBERT↔ModernBERT 비교는 Anchor Weighted F1 ↔ KoBERT Weighted F1로만** 한다.
 - `metric_for_best_model`으로 best checkpoint를 고르고 `load_best_model_at_end=True`.
 
 ## KoBERT — 에폭별 (val)
@@ -43,7 +43,7 @@
 - **Best = 에폭 11** (Weighted F1 0.8134). 에폭 12는 미세 하락 → 최종 모델은 에폭 11 checkpoint.
 - Val Loss는 에폭 7(0.000439)에서 최저, 이후 미세 상승(과적합 시작)하지만 F1은 에폭 11까지 계속 개선 → **loss가 아니라 F1으로 best를 골라야 함**.
 
-## ModernBERT (A.X-Encoder) — 스텝별 (val)
+## ModernBERT exp1 (8192) — 스텝별 (val)
 
 컬럼: Step · Epoch · Train Loss · Val Loss · Micro F1 · Macro F1 · Sample F1 · Empty Rate · Anchor Weighted F1
 
@@ -81,19 +81,58 @@ Epoch은 `step / 25,236`(에폭당 스텝)으로 환산. Empty Rate = 예측이 
 - Anchor Weighted F1은 에폭 10(0.8235)에서 사실상 포화, 이후 미세 등락. Micro/Macro/Sample F1은 끝까지 우상향.
 - Empty Rate는 초반 0.23 → 에폭 4에서 0.03 이하로 급락 → 수렴 신호로 유용(초기 학습이 정상 진행 중인지 빠르게 확인 가능).
 
+## ModernBERT exp2 (512) — 스텝별 (val)
+
+exp1과 동일 로깅·에폭 환산(`step / 25,236`). max_len만 512, 나머지 하이퍼파라미터 정합.
+
+| Step | Epoch | Train Loss | Val Loss | Micro F1 | Macro F1 | Sample F1 | Empty Rate | Anchor W-F1 |
+|-------:|-----:|-----------:|---------:|---------:|---------:|----------:|-----------:|------------:|
+| 12,618  | 0.5  | 0.001272 | 0.000881 | 0.6396 | 0.6038 | 0.5759 | 0.2643 | 0.6574 |
+| 25,236  | 1.0  | 0.000942 | 0.000727 | 0.7158 | 0.6904 | 0.6750 | 0.1784 | 0.7267 |
+| 37,854  | 1.5  | 0.000826 | 0.000619 | 0.7413 | 0.7213 | 0.7009 | 0.1704 | 0.7512 |
+| 50,472  | 2.0  | 0.000625 | 0.000477 | 0.7959 | 0.7793 | 0.7813 | 0.0917 | 0.7704 |
+| 63,090  | 2.5  | 0.000443 | 0.000437 | 0.8154 | 0.8074 | 0.8112 | 0.0630 | 0.7934 |
+| 75,708  | 3.0  | 0.000489 | 0.000416 | 0.8288 | 0.8236 | 0.8323 | 0.0424 | 0.7939 |
+| 88,326  | 3.5  | 0.000313 | 0.000425 | 0.8327 | 0.8254 | 0.8367 | 0.0407 | 0.8051 |
+| 100,944 | 4.0  | 0.000293 | 0.000416 | 0.8389 | 0.8330 | 0.8478 | 0.0276 | 0.8029 |
+| 113,562 | 4.5  | 0.000190 | 0.000445 | 0.8429 | 0.8380 | 0.8540 | 0.0257 | 0.8067 |
+| 126,180 | 5.0  | 0.000253 | 0.000416 | 0.8459 | 0.8404 | 0.8556 | 0.0256 | 0.8064 |
+| 138,798 | 5.5  | 0.000142 | 0.000478 | 0.8482 | 0.8443 | 0.8602 | 0.0220 | 0.8157 |
+| 151,416 | 6.0  | 0.000175 | 0.000465 | 0.8490 | 0.8447 | 0.8584 | 0.0269 | 0.8135 |
+| 164,034 | 6.5  | 0.000114 | 0.000531 | 0.8532 | 0.8498 | 0.8686 | 0.0149 | 0.8128 |
+| 176,652 | 7.0  | 0.000112 | 0.000552 | 0.8514 | 0.8468 | 0.8633 | 0.0219 | 0.8137 |
+| 189,270 | 7.5  | 0.000091 | 0.000630 | 0.8550 | 0.8519 | 0.8674 | 0.0178 | 0.8117 |
+| 201,888 | 8.0  | 0.000083 | 0.000618 | 0.8580 | 0.8550 | 0.8735 | 0.0129 | 0.8173 |
+| 214,506 | 8.5  | 0.000064 | 0.000721 | 0.8584 | 0.8549 | 0.8719 | 0.0167 | 0.8161 |
+| 227,124 | 9.0  | 0.000061 | 0.000711 | 0.8586 | 0.8552 | 0.8711 | 0.0175 | 0.8197 |
+| 239,742 | 9.5  | 0.000030 | 0.000825 | 0.8592 | 0.8559 | 0.8723 | 0.0185 | 0.8157 |
+| 252,360 | 10.0 | 0.000034 | 0.000862 | 0.8609 | 0.8575 | 0.8742 | 0.0163 | 0.8184 |
+| 264,978 | 10.5 | 0.000012 | 0.000940 | 0.8616 | 0.8587 | 0.8770 | 0.0134 | 0.8169 |
+| 277,596 | 11.0 | 0.000017 | 0.000981 | 0.8642 | 0.8614 | 0.8786 | 0.0142 | 0.8167 |
+| **290,214** | 11.5 | 0.000004 | 0.001039 | **0.8643** | 0.8615 | 0.8779 | 0.0151 | 0.8191 |
+| 302,832 | 12.0 | 0.000007 | 0.001042 | 0.8634 | 0.8605 | 0.8777 | 0.0149 | 0.8199 |
+| 302,844 | 12.0 | 0.000007 | 0.001042 | 0.8632 | 0.8603 | 0.8776 | 0.0148 | 0.8198 |
+
+- **Best = 스텝 290,214 (에폭 11.5)** — Micro F1 0.8643. 이후 미세 하락 → 최종 모델은 이 checkpoint(`load_best_model_at_end`). exp1(8192)이 마지막 스텝까지 우상향해 best=최종인 것과 달리, exp2는 11.5 에폭에서 꺾인다.
+- Val Loss는 에폭 3~5(≈0.000416)에서 최저, 이후 상승하지만 F1 계열은 에폭 11.5까지 개선 → best는 loss 아닌 F1 기준(KoBERT·exp1과 동일 패턴).
+- Anchor W-F1은 에폭 5.5(0.8157)부터 사실상 포화해 0.81~0.82 등락(final 0.8198). Empty Rate는 0.264 → 에폭 4에서 0.03 이하로 급락.
+- **exp1(8192) 대비 곡선 전체가 낮다.** 같은 스텝에서 Micro/Anchor가 exp1보다 아래(최종 val Micro 0.863 vs exp1 0.870, Anchor 0.820 vs 0.824) — 컨텍스트 길이·토크나이저 커버리지 차이가 곡선 전 구간에 반영된다(분해는 `modernbert-comparison.md`).
+
 ## test 최종 성능
 
-| 지표 | KoBERT (512) | ModernBERT (8192) |
-|------|-------------:|------------------:|
-| **Weighted F1 (top-1, 비교 기준)** | 0.8148 | **0.8257** |
-| Micro F1 | 0.8147 (top-1) | 0.8684 (multi-label) |
-| Macro F1 | 0.7870 (top-1) | 0.8648 (multi-label) |
-| Sample F1 | — | 0.8825 |
-| P@1 / P@3 / P@5 | 0.8937 / 0.9623 / 0.9791 | — |
-| Empty Rate | — | 0.0134 |
+지표 SSOT는 전용 평가(`output/total_metrics_*.json`). ModernBERT는 훈련과 동일 `max_len`으로 절단한 test 기준.
 
-- **비교 가능한 축은 Weighted F1(top-1)**: KoBERT 0.8148 → ModernBERT 0.8257 (**+0.0109**). 장문 인코더가 512 baseline을 상회.
-- Micro/Macro F1은 두 실험의 정의가 달라(top-1 vs multi-label) 직접 비교 금지.
+| 지표 | KoBERT (512) | ModernBERT exp1 (8192) | ModernBERT exp2 (512) |
+|------|-------------:|-----------------------:|----------------------:|
+| **Weighted F1 (top-1, 비교 기준)** | 0.8148 | **0.8256** | 0.8203 |
+| Micro F1 | 0.8147 (top-1) | 0.8685 (multi-label) | 0.8601 (multi-label) |
+| Macro F1 | 0.7870 (top-1) | 0.8648 (multi-label) | 0.8572 (multi-label) |
+| Sample F1 | — | 0.8825 | 0.8720 |
+| P@1 / P@3 / P@5 | 0.8937 / 0.9623 / 0.9791 | — | — |
+| Empty Rate | — | 0.0135 | 0.0179 |
+
+- **비교 가능한 축은 Weighted F1(top-1)**: KoBERT 0.8148 → exp1(8192) 0.8256(**+0.0108**) / exp2(512) 0.8203(**+0.0055**). 장문·512 A.X 모두 512 baseline을 상회하며, exp1>exp2로 컨텍스트 길이 이득이 얹힌다.
+- Micro/Macro F1은 KoBERT(top-1)와 ModernBERT(multi-label)의 정의가 달라 직접 비교 금지. ModernBERT 간(exp1↔exp2)은 동일 정의라 비교 가능(멀티라벨 전 지표 비교는 `modernbert-comparison.md`).
 
 ## 다른 실험 모니터링 체크포인트
 
