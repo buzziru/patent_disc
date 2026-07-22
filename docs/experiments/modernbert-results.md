@@ -8,7 +8,7 @@
 > 훈련: `notebook/04_02_ModernBERT_MaxLen.ipynb`(실행 결과 `notebook_output/04_02_ModernBERT_MaxLen_output.ipynb`, 훈련 중 test 지표 `output/modernbert-patent-len8192_test_metrics.json`).
 > 지표 SSOT: 03_02 멀티라벨 프로토콜을 그대로 적용한 **전용 평가** `notebook/04_03_ModernBERT_Len8192_Metric.ipynb`(실행 결과 `notebook_output/04_03_ModernBERT_Len8192_Metric_output.ipynb`, 전체 지표 `output/total_metrics_modernbert-patent-len8192.json`). 아래 수치는 04_03 전용 평가 기준(04_02 훈련 중 지표와 4자리까지 일치).
 
-**구성**(KoBERT 재현과 레시피 정합 — 길이·모델·토크나이저 외 변수 고정): `max_len=8,192`(>8,192 극소수 `x[:max_len-1]+[eos]`로 마감), 손실 `FocalLoss(alpha=0.25, gamma=2)`, lr 3e-5, 유효 배치 8(micro-batch×grad_accum로 512 런과 등화), `attn_implementation="flash_attention_2"`, `group_by_length`, 12에폭(global_step 302,844). **훈련 시간은 exp1 ≈29h, KoBERT 재현 ≈10h.**
+**구성**(KoBERT 재현과 레시피 정합 — 길이·모델·토크나이저 외 변수 고정): `max_len=8,192`(>8,192 극소수 `x[:max_len-1]+[eos]`로 마감), 손실 `FocalLoss(alpha=0.25, gamma=2)`, lr 3e-5, 유효 배치 8(micro-batch×grad_accum로 512 런과 등화), `attn_implementation="flash_attention_2"`, `group_by_length`, 12에폭(global_step 302,844 = 25,237 steps/epoch × 12 — **early stopping이 발동하지 않고 스케줄을 전부 소진**했다. linear 스케줄이 12에폭에 맞춰 LR을 0으로 감쇠시키므로, 런은 수렴해서가 아니라 예산이 끝나서 종료됐다). **훈련 시간은 exp1 ≈29h, exp2(512) ≈14h, KoBERT 재현 ≈10h.**
 
 ### 고정 test(11,271) 비교
 
@@ -52,7 +52,7 @@ exp1 자체 bin은 B0(micro 0.8765) → B3(0.8490)로 완만히 하락한다. �
 
 > 훈련: `notebook/05_01_ModernBERT_Len512.ipynb`. 지표 SSOT: `notebook/05_02_ModernBERT_Len512_Metric.ipynb`(실행 결과 `notebook_output/05_02_ModernBERT_Len512_Metric_output.ipynb`, 전체 지표 `output/total_metrics_modernbert-patent-len512.json`). 평가는 훈련과 동일하게 test를 `max_len=512`로 절단 후 추론.
 
-**구성**: exp1과 길이(`max_len=512`)만 다르고 나머지 정합 — `FocalLoss(0.25, 2)`, lr 3e-5, 유효 배치 8, `attn_implementation="flash_attention_2"`, `group_by_length`. exp1↔exp2 비교에서 컨텍스트 길이만 남기기 위한 control.
+**구성**: exp1과 길이(`max_len=512`)만 다르고 나머지 정합 — `FocalLoss(0.25, 2)`, lr 3e-5, 유효 배치 8, `attn_implementation="flash_attention_2"`, `group_by_length`. exp1↔exp2 비교에서 컨텍스트 길이만 남기기 위한 control. **훈련 시간 ≈14h.**
 
 ### 고정 test(11,271) 비교
 

@@ -71,7 +71,7 @@ full length는 극소수 장문(p99≈3,621, max 10,523)이 배치에 섞일 때
 
 ## 미정·다음 단계
 
-- **손실 함수**: BCE vs focal(baseline과 정합). baseline이 focal(alpha=0.25, gamma=2)이므로 우선 정합, 이후 BCE 대조.
+- **손실 함수**: 카디널리티 회수를 겨냥한 손실 교체(ZLPR·ASL·DL2). 계획·후보 평가·프로토콜은 [`loss-function.md`](./loss-function.md).
 - **형식 스키마 확정**(exp3 진행 시): 항목명 마커 토큰 형태(`[청구항]` 등 리터럴 vs special token 추가) 결정. special token 추가 시 임베딩 확장 필요.
 - **임계 튜닝**: τ=0.5가 최적이 아니라는 신호(empty rate·랭킹>임계결정) — val 임계 튜닝을 성능 레버로 남긴다. 실행 계획은 [`no-train-analysis.md`](./no-train-analysis.md) B.
 - **라벨 개수별 분해**: 단일 vs 다라벨(≥2) 성능 분리는 아직 미측정. 실행 계획은 [`no-train-analysis.md`](./no-train-analysis.md) A(오류 분해와 함께 수행).

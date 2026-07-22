@@ -10,7 +10,8 @@
 
 - `infra/` — GPU 훈련을 외부 잡으로 돌리는 방법(로컬은 CPU 전용)
 - `data/` — 데이터 레이아웃·스키마·전처리 파이프라인
-- `experiments/` — baseline 재현·실험별 설정/결과·의사결정 기록
+- `experiments/` — baseline 재현·실험별 설정/결과·프로토콜
+- `adr/` — 사안별 결정 기록·회고(결정의 경위·대안·결과)
 
 ## 현재 문서
 
@@ -20,6 +21,7 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 
 - `[infra/lightning-jobs.md](./infra/lightning-jobs.md)` — Lightning AI Jobs: **로컬에서 Python SDK로 커스텀 Docker 이미지 잡을 제출**(스튜디오 스냅샷 대신). `lightning` CLI는 Windows 미지원 → SDK 사용
 - `[infra/colab-jobs.md](./infra/colab-jobs.md)` — Google Colab: `colab` CLI로 헤드리스 L4 GPU에서 self-contained 스크립트 실행
+- `[infra/runpod-jobs.md](./infra/runpod-jobs.md)` — RunPod: `uv.lock`을 굳힌 커스텀 Docker 이미지로 RTX 4090/L4 팟에서 `.ipynb` 훈련(Trainer 런타임 의존성·flash-attn gpu 그룹·비용 가드)
 - `[infra/studio-performance.md](./infra/studio-performance.md)` — ⚠️ **과거 Lightning cloudspace 기록**(로컬 무관): 스튜디오 느림/"CPU 과부하" 진단, 컨테이너 vs 호스트 CPU 구분, 노이지 네이버 대처
 
 ### 데이터 (`data/`)
@@ -32,14 +34,20 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 - `[experiments/kobert-baseline.md](./experiments/kobert-baseline.md)` — KoBERT baseline을 고정 test set 위에서 직접 재현해 **비교 기준점**(top-1 weighted-F1 + 멀티라벨·길이구간) 수립
 - `[experiments/modernbert.md](./experiments/modernbert.md)` — A.X-Encoder(ModernBERT) 실험 **계획·프로토콜·비교 축**(허브: 공통 프로토콜·dtype/절단 함정·실험 목록)
 - `[experiments/modernbert-results.md](./experiments/modernbert-results.md)` — A.X-Encoder **실험별 실측**(exp1 full 8192 / exp2 512 control)
-- `[experiments/modernbert-comparison.md](./experiments/modernbert-comparison.md)` — A.X-Encoder **교차 비교·결론**(길이 vs 모델 분해 · 3모델 bin · 커버리지 기제 실측 · 멀티라벨 지표 비교)
-- `[experiments/klue-roberta.md](./experiments/klue-roberta.md)` — **KLUE-RoBERTa-large 대조군** 계획·프로토콜(512 창 절단 필수 · 절단 규칙 · 크기·토크나이저 confound)
-- `[experiments/no-train-analysis.md](./experiments/no-train-analysis.md)` — **무훈련 분석 3종**(오류 분해 sibling/cross-Lno · 임계값 튜닝 — 계획 / 토크나이저 fertility·coverage — 완료) + 로짓 재확보 절차
+- `[experiments/modernbert-comparison.md](./experiments/modernbert-comparison.md)` — A.X-Encoder **교차 비교·결론**(길이 vs 모델 분해 · 오류 수준 차집합 · 3모델 bin · 커버리지 기제 실측 · 멀티라벨 지표 비교 · 라벨 개수 bin · 오류 구조와 계층 확장 판정 · 임계값 정책)
+- `[experiments/klue-roberta.md](./experiments/klue-roberta.md)` — **KLUE-RoBERTa-base 대조군(선택 항목 — 후순위)** 계획·프로토콜(512 창 절단 필수 · 절단 규칙 · 크기·토크나이저 confound)
+- `[experiments/no-train-analysis.md](./experiments/no-train-analysis.md)` — **무훈련 분석 3종 완료**(오류 분해 sibling/cross-Lno · 임계값 튜닝 global/per-class τ · 토크나이저 fertility·coverage) + 로짓 재확보 절차
 - (예정) 데이터 EDA/필드 길이 분석, 클래스 불균형 노트, 실험별 설정·결과 요약, 모델/입력 필드 선택 근거
+
+### 결정 기록·회고 (`adr/`)
+
+프로젝트의 주요 결정을 사안별로 남긴다 — 무엇을 왜 결정했고 어떤 대안을 접었으며 결과가 무엇이었나. 포트폴리오·회고의 SSOT.
+
+- `[adr/README.md](./adr/README.md)` — ADR 인덱스·규약·결정 카탈로그(사안 목록·상태)
 
 ## 훈련 인프라 요약
 
-문서당 다중 레이블(multi-label) 188-way 인코더 분류(주 모델 `skt/A.X-Encoder-base` — 한국어 ModernBERT 16k / 대조군 KLUE-RoBERTa-large 512). 단일 GPU로 충분, multi-GPU 불필요.
+문서당 다중 레이블(multi-label) 188-way 인코더 분류(주 모델 `skt/A.X-Encoder-base` — 한국어 ModernBERT 16k / 대조군 KLUE-RoBERTa-base 512, 선택 항목). 단일 GPU로 충분, multi-GPU 불필요.
 
 
 | 경로                     | 언제                                                                                                         |

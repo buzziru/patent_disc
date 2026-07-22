@@ -1,0 +1,160 @@
+{
+  "split": "test",
+  "n_docs": 11271,
+  "tau": 0.5,
+  "num_labels": 188,
+  "num_lno": 17,
+  "fields": [
+    "invention_title",
+    "ipc_main",
+    "abstract",
+    "claims"
+  ],
+  "raw_ds": "ingyoun/patent-clean-text",
+  "pairs": [
+    {
+      "component": "model",
+      "base": "kobert-patent-baseline_len512",
+      "target": "modernbert-patent-len512",
+      "fixed": {
+        "n": 455,
+        "sibling": 175,
+        "cross_lno": 280,
+        "by_length_bin": {
+          "<=512": 126,
+          "512-1024": 204,
+          "1024-2048": 95,
+          ">2048": 30
+        }
+      },
+      "broken": {
+        "n": 385,
+        "sibling": 129,
+        "cross_lno": 256,
+        "by_length_bin": {
+          "<=512": 100,
+          "512-1024": 178,
+          "1024-2048": 81,
+          ">2048": 26
+        }
+      },
+      "net_gain": 70,
+      "net_by_bin": {
+        "<=512": 26,
+        "512-1024": 26,
+        "1024-2048": 14,
+        ">2048": 4
+      },
+      "fix_rate_by_bin": {
+        "<=512": 0.4286,
+        "512-1024": 0.3878,
+        "1024-2048": 0.3276,
+        ">2048": 0.3409
+      }
+    },
+    {
+      "component": "window",
+      "base": "modernbert-patent-len512",
+      "target": "modernbert-patent-len8192",
+      "fixed": {
+        "n": 356,
+        "sibling": 124,
+        "cross_lno": 232,
+        "by_length_bin": {
+          "<=512": 72,
+          "512-1024": 157,
+          "1024-2048": 95,
+          ">2048": 32
+        }
+      },
+      "broken": {
+        "n": 296,
+        "sibling": 125,
+        "cross_lno": 171,
+        "by_length_bin": {
+          "<=512": 87,
+          "512-1024": 126,
+          "1024-2048": 63,
+          ">2048": 20
+        }
+      },
+      "net_gain": 60,
+      "net_by_bin": {
+        "<=512": -15,
+        "512-1024": 31,
+        "1024-2048": 32,
+        ">2048": 12
+      },
+      "fix_rate_by_bin": {
+        "<=512": 0.2687,
+        "512-1024": 0.314,
+        "1024-2048": 0.3442,
+        ">2048": 0.381
+      }
+    },
+    {
+      "component": "total",
+      "base": "kobert-patent-baseline_len512",
+      "target": "modernbert-patent-len8192",
+      "fixed": {
+        "n": 512,
+        "sibling": 196,
+        "cross_lno": 316,
+        "by_length_bin": {
+          "<=512": 119,
+          "512-1024": 221,
+          "1024-2048": 132,
+          ">2048": 40
+        }
+      },
+      "broken": {
+        "n": 382,
+        "sibling": 145,
+        "cross_lno": 237,
+        "by_length_bin": {
+          "<=512": 108,
+          "512-1024": 164,
+          "1024-2048": 86,
+          ">2048": 24
+        }
+      },
+      "net_gain": 130,
+      "net_by_bin": {
+        "<=512": 11,
+        "512-1024": 57,
+        "1024-2048": 46,
+        ">2048": 16
+      },
+      "fix_rate_by_bin": {
+        "<=512": 0.4048,
+        "512-1024": 0.4202,
+        "1024-2048": 0.4552,
+        ">2048": 0.4545
+      }
+    }
+  ],
+  "hard_core": {
+    "n": 573,
+    "by_length_bin": {
+      "<=512": 141,
+      "512-1024": 255,
+      "1024-2048": 139,
+      ">2048": 38
+    }
+  },
+  "hierarchy_verdict": {
+    "anchor_tag": "modernbert-patent-len8192",
+    "criterion": "2단계(Lno→Mno) 추정 P@1이 flat P@1을 상회하는가 여부",
+    "flat_p@1": 0.9052,
+    "lno_stage_p@1": 0.9399,
+    "oracle_lno_p@1": 0.9551,
+    "two_stage_p@1_est": 0.8977,
+    "delta_vs_flat": -0.0075,
+    "decision": "flat 유지",
+    "descriptive": {
+      "sibling_ratio": 0.3661,
+      "chance_sibling_ratio": 0.0698,
+      "sibling_enrichment": 5.25
+    }
+  }
+}
