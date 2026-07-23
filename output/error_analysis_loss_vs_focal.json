@@ -1,0 +1,83 @@
+{
+  "split": "test",
+  "n_docs": 11271,
+  "tau": 0.5,
+  "num_labels": 188,
+  "num_lno": 17,
+  "fields": [
+    "invention_title",
+    "ipc_main",
+    "abstract",
+    "claims"
+  ],
+  "raw_ds": "ingyoun/patent-clean-text",
+  "ref_tag": "modernbert-patent-len512",
+  "pairs": [
+    {
+      "component": "loss",
+      "base": "modernbert-patent-len512",
+      "target": "modernbert-patent-len512-zlpr",
+      "fixed": {
+        "n": 362,
+        "k>=2": 47,
+        "sibling": 138,
+        "cross_lno": 224,
+        "by_length_bin": {
+          "<=512": 79,
+          "512-1024": 180,
+          "1024-2048": 77,
+          ">2048": 26
+        }
+      },
+      "broken": {
+        "n": 460,
+        "k>=2": 67,
+        "sibling": 182,
+        "cross_lno": 278,
+        "by_length_bin": {
+          "<=512": 115,
+          "512-1024": 218,
+          "1024-2048": 95,
+          ">2048": 32
+        }
+      },
+      "net_gain": -98,
+      "net_by_bin": {
+        "<=512": -36,
+        "512-1024": -38,
+        "1024-2048": -18,
+        ">2048": -6
+      },
+      "fix_rate_by_bin": {
+        "<=512": 0.2948,
+        "512-1024": 0.36,
+        "1024-2048": 0.279,
+        ">2048": 0.3095
+      }
+    }
+  ],
+  "hard_core": {
+    "n": 766,
+    "by_length_bin": {
+      "<=512": 189,
+      "512-1024": 320,
+      "1024-2048": 199,
+      ">2048": 58
+    }
+  },
+  "hierarchy_verdict": {
+    "anchor_tag": "modernbert-patent-len512-zlpr",
+    "criterion": "2단계(Lno→Mno) 추정 P@1이 flat P@1을 상회하는가 여부",
+    "flat_p@1": 0.8912,
+    "lno_stage_p@1": 0.9288,
+    "oracle_lno_p@1": 0.9493,
+    "two_stage_p@1_est": 0.8817,
+    "delta_vs_flat": -0.0095,
+    "decision": "flat 유지",
+    "descriptive": {
+      "sibling_ratio": 0.3458,
+      "chance_sibling_ratio": 0.0681,
+      "sibling_enrichment": 5.08
+    }
+  }
+}
