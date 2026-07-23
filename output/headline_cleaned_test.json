@@ -1,0 +1,103 @@
+{
+  "n_old": 11271,
+  "n_new": 11244,
+  "n_removed": 27,
+  "models": {
+    "kobert-patent-baseline_len512": {
+      "old": {
+        "micro": 0.8502,
+        "macro": 0.847,
+        "sample": 0.8656,
+        "empty": 0.0116,
+        "p_at_1": 0.8937
+      },
+      "new": {
+        "micro": 0.85,
+        "macro": 0.8467,
+        "sample": 0.8653,
+        "empty": 0.0117,
+        "p_at_1": 0.8935
+      }
+    },
+    "modernbert-patent-len512": {
+      "old": {
+        "micro": 0.8601,
+        "macro": 0.8572,
+        "sample": 0.872,
+        "empty": 0.0179,
+        "p_at_1": 0.8999
+      },
+      "new": {
+        "micro": 0.8599,
+        "macro": 0.8571,
+        "sample": 0.8718,
+        "empty": 0.018,
+        "p_at_1": 0.8998
+      }
+    },
+    "modernbert-patent-len8192": {
+      "old": {
+        "micro": 0.8685,
+        "macro": 0.8649,
+        "sample": 0.8825,
+        "empty": 0.0135,
+        "p_at_1": 0.9052
+      },
+      "new": {
+        "micro": 0.8683,
+        "macro": 0.8647,
+        "sample": 0.8823,
+        "empty": 0.0135,
+        "p_at_1": 0.905
+      }
+    },
+    "modernbert-patent-len512-asl": {
+      "old": {
+        "micro": 0.8362,
+        "macro": 0.8366,
+        "sample": 0.8646,
+        "empty": 0.0043,
+        "p_at_1": 0.8913
+      },
+      "new": {
+        "micro": 0.8359,
+        "macro": 0.8363,
+        "sample": 0.8643,
+        "empty": 0.0043,
+        "p_at_1": 0.8911
+      }
+    },
+    "modernbert-patent-len512-bce": {
+      "old": {
+        "micro": 0.8538,
+        "macro": 0.8508,
+        "sample": 0.8689,
+        "empty": 0.0106,
+        "p_at_1": 0.8915
+      },
+      "new": {
+        "micro": 0.8535,
+        "macro": 0.8506,
+        "sample": 0.8687,
+        "empty": 0.0106,
+        "p_at_1": 0.8912
+      }
+    },
+    "modernbert-patent-len512-zlpr": {
+      "old": {
+        "micro": 0.8493,
+        "macro": 0.8462,
+        "sample": 0.8662,
+        "empty": 0.0096,
+        "p_at_1": 0.8912
+      },
+      "new": {
+        "micro": 0.8491,
+        "macro": 0.846,
+        "sample": 0.8659,
+        "empty": 0.0096,
+        "p_at_1": 0.891
+      }
+    }
+  }
+}
