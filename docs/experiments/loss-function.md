@@ -104,7 +104,7 @@ loss_func.md 초안은 임계값 민감도 기준(ZLPR ≳ DL2 > ASL)과 서사�
 
 ### ZLPR — 음성 (미채택)
 
-- **SSOT**: `output/modernbert-patent-len512-ZLPR_test_metrics.json` · 노트북 `notebook_output/09_01_Loss_ZLPR_output.ipynb`.
+- **SSOT**: `output/modernbert-patent-len512-ZLPR_test_metrics.json` · 노트북 `notebook_output/09_01_Loss_ZLPR_output.ipynb`. 오류 분석 `output/error_analysis_modernbert-patent-len512-zlpr.json`·`output/error_analysis_loss_vs_focal.json`(노트북 `notebook/09_04_Loss_Error_Analysis.ipynb`).
 - **레시피**(08_01/08_02로 확정): len512 · eff_batch 128 · lr 4.8e-4 · 12 epoch. focal 대체 지점(`compute_loss`)만 `ZlprLoss`로 교체하고 나머지 경로는 공통 프로토콜 고정. 평가 임계는 ZLPR native(logit>0 ⟺ sigmoid≥0.5)라 τ=0.5 지표가 손실에 정합한다.
 - **최종 test**: micro **0.8493** · macro 0.8462 · sample 0.8662 · empty_rate 0.96% · anchor(top-1 weighted) 0.8122. best val micro 0.8526(checkpoint-18147).
 
@@ -118,10 +118,42 @@ loss_func.md 초안은 임계값 민감도 기준(ZLPR ≳ DL2 > ASL)과 서사�
 
 focal은 이 레시피에서 1.5 epoch 만에 val micro 0.835로 exp2 수렴치(0.8601) 궤도에 오른다. 배치 상향(L4→A40에 따른 것)은 focal에서 정상 작동하므로 열세 원인은 배치가 아니라 손실로 귀속된다. ZLPR는 12 epoch을 다 써 test micro 0.8493에 그쳐 비교 기준선 exp2 focal(§비교 기준선, 0.8601)을 1.08pt 밑돈다.
 
-empty_rate 0.96%는 적응 임계 기제(문서별 가변 라벨 수)가 작동했음을 보이나 micro 이득으로 전환되지 않았다 — 회수한 예측이 진양성보다 거짓양성 쪽이었음을 시사한다.
+**오류 분석(09_04, focal exp2 대비).** 열위의 기제는 "적응 임계는 작동했으나 회수 질량이 표적을 빗나갔다"로 요약된다.
+
+- **회수 질량이 표적을 빗나갔다.** zero-bound가 전역 empty rate를 focal 1.79%→0.96%로 낮춰 실제로 더 예측하나, 늘어난 예측은 k≥2의 눌린 2번째 양성이 아니라 **k=1 과대예측**으로 갔다(k=1 평균 예측 1.079→1.085, 대부분 거짓양성). 표적인 k≥2에서는 오히려 평균 예측이 1.93→**1.84로 줄어** 과소예측률이 44.9%→**50.5%**로 악화됐다.
+- **표적 슬라이스가 양방향으로 나빠졌다.** k≥2 micro가 0.7994→**0.7741**(−2.53pt)이며 FN 증가(k≥2 FN 1,087→**1,237**)가 주도한다(FP는 367 동수). 전역으로도 FP·FN 모두 늘어(1,916→2,013 · 1,884→2,066) FN 증가폭이 커 micro를 끌어내렸다.
+- **임계뿐 아니라 랭킹도 열위.** 임계 무관 지표인 k≥2 **R-Precision이 0.862→0.849**로 내렸다 — 결손이 임계 배치가 아니라 **점수 순서 자체**에서도 발생했다는 뜻이다.
+- **top-1 차집합도 순손실.** focal→zlpr에서 top-1 오류를 362건 고치고 460건 깨뜨려 순 −98건이며, k≥2 한정 fixed 47 vs broken 67로 **다라벨 문서를 더 많이 깨뜨린다.**
 
 이 결과는 §ZLPR **⚠️단서**가 명시한 위험의 실현이다: 보고된 이득은 카디널리티 2.0~7.6에서 측정됐고 이 데이터는 1.2, 단일 라벨 86%로 co-occurrence 신호가 옅어 랭킹 손실의 이득이 나오지 않았다. "신뢰가 아니라 A/B로 판정한다"는 프로토콜대로 음성으로 종결한다.
 
-### ASL · DL2
+### ASL — 음성 (미채택)
 
-(실험 예정.)
+- **SSOT**: `output/modernbert-patent-len512-asl_test_metrics.json` · 노트북 `notebook_output/09_02_Loss_ASL.ipynb`. 오류 분석 `output/error_analysis_modernbert-patent-len512-asl.json`·`output/error_analysis_loss_vs_focal.json`(노트북 `notebook/09_04_Loss_Error_Analysis.ipynb`).
+- **레시피**(08_01/08_02로 확정): len512 · eff_batch 128 · lr 4.8e-4 · 12 epoch · γ+=0 / γ−=4 / margin=0.05. focal 대체 지점(`compute_loss`)만 `AslLoss`로 교체하고 나머지 경로는 공통 프로토콜 고정.
+- **최종 test**: micro **0.8362** · macro 0.8366 · sample 0.8646 · empty_rate 0.43% · anchor(top-1 weighted) 0.8148. best val micro 0.8416.
+
+**판정: focal 대비 열세(−2.39pt) → 미채택.** 열세의 기제가 ZLPR과 다르다 — **표적(k≥2)은 회수했으나 다수(k=1)를 부쉈다.** focal의 `alpha`가 무력이라 양성/음성 비대칭은 이 프로젝트 최초 검증이었다(랭킹 손실 ZLPR과 성격이 달라 중복 아님).
+
+**오류 분석(09_04, focal exp2 대비).** FP:FN 부호 뒤집힘의 직접 실증으로 요약된다.
+
+- **표적 슬라이스는 이겼다.** γ+/γ− 분리가 양성 recall을 밀어 k≥2 과소예측률을 focal 44.9%→**29.3%**, 평균 예측을 1.93→**2.265**(정답 2.355에 근접)로 끌어올려 k≥2 micro가 0.7994→**0.8046**으로 focal을 앞선다. 카디널리티 회수라는 표적 자체는 달성했다.
+- **같은 recall push가 다수 슬라이스를 깎았다.** k=1은 이미 과대예측(평균 1.079)인데 ASL이 이를 **1.201**로 더 밀어 k=1 **fp/fn가 1.94→4.01**, k=1 micro가 0.8822→**0.8479**(−3.43pt)로 무너졌다. 전역 FP가 1,916→**3,254**로 폭증(FN은 1,884→1,480으로 감소).
+- **순효과.** 문서 85%인 k=1의 손실이 15% k≥2의 이득을 압도해 전역 micro가 −2.39pt. top-1 차집합도 fixed 341 vs broken 438로 순 −97.
+- **전역 손실이 못 넘는 벽의 실증.** k=1(과대예측)과 k≥2(과소예측)는 정반대 operating point를 요구하는데, 양성 recall을 미는 단방향 재배치는 k≥2를 살리며 k=1을 함께 밀어 둘을 동시에 만족시키지 못한다. [ADR-0009](../adr/0009-loss-axis-closure.md)가 예측한 "k=1 FP로 micro 깎을 위험"의 실현이며, ZLPR(랭킹 질량이 k=1 FP로 샘)과 다른 경로로 같은 벽에 걸린다.
+
+### BCE — 진단 (미채택)
+
+- **SSOT**: `output/modernbert-patent-len512-bce_test_metrics.json` · 노트북 `notebook_output/09_03_Loss_BCE.ipynb`. 오류 분석 `output/error_analysis_modernbert-patent-len512-bce.json`.
+- **레시피**(08_01/08_02로 확정): len512 · eff_batch 128 · lr 4.8e-4 · 12 epoch. focal에서 γ·α를 제거한 순수 BCE(`reduction="mean"`). focal 대체 지점만 교체하고 나머지 경로는 공통 프로토콜 고정.
+- **최종 test**: micro **0.8538** · macro 0.8508 · sample 0.8689 · empty_rate 1.06% · anchor 0.8133. best val micro 0.8580.
+
+**판정(진단): focal −0.62pt.** "focal>BCE"는 이 프로젝트에서 미측정 가정이었다(베이스라인이 처음부터 focal). BCE 1런으로 focal의 γ가 이 구조에서 값을 하는지 진단한다 — γ는 **작지만 실재하는 이득**이다.
+
+**오류 분석(09_04, focal exp2 대비).** BCE는 focal에서 γ만 뺀 같은 계열이라 **operating point가 focal과 사실상 동일**하다 — k=1 fp/fn 1.932(focal 1.944) · k≥2 fp/fn 0.339(focal 0.338) · 전역 FP/FN 1,990/1,978(focal 1,916/1,884)로 균형이 focal과 겹친다. 격차 −0.62pt는 **k≥2에 집중**된다(k≥2 micro 0.7994→0.7864, k=1은 0.8822→0.8782로 −0.4pt에 그침). 즉 focal의 γ는 k≥2의 눌린 hard positive를 sharpening하는 이득이며, 그 크기가 γ의 순수 값이다.
+
+**부수 확인 — 열세는 lr 편향이 아니라 손실 기제다.** 09 손실 3런은 05_01 focal(eff_batch 8 · lr 3e-5)과 배치·lr이 함께 16배 차이나(3e-5×16 = 4.8e-4, linear scaling rule) 두 축이 겹친다. 그러나 (1) focal을 **동일 레시피**(eff128/lr4.8e-4)로 돌린 `08_02`가 2 epoch만에 val micro 0.835로 건강히 올라 배치 상향은 이 손실 계열에 무해하고, (2) BCE는 focal과 같은 계열이라 focal에 맞춰 탐색된 lr 4.8e-4가 그대로 최적인데 셋 중 최고 micro(0.8538)에 도달해 **레시피가 이 계열에 공정함**을 확인한다. 임계 무관 지표(ZLPR k≥2 R-Precision)와 operating-point 기반 09_04 분석은 모두 lr 스케일과 독립이라, 세 손실의 열세는 lr 선택 편향이 아니라 손실 기제로 귀속된다.
+
+### DL2 — 미착수 (ADR-0009)
+
+DL2(dice)는 착수하지 않는다. 손실 축 종결 판단([ADR-0009](../adr/0009-loss-axis-closure.md))에 따른다 — ZLPR 실측 부정 + 전역 손실이 **k=1 과대예측·k≥2 과소예측의 FP:FN 부호 뒤집힘**을 단방향 재배치로 동시에 풀 수 없다는 논증(문서별 카디널리티만이 해소하나 닫힌 갈래). DL2도 전역 reshaping이라 같은 벽에 걸리고, F1 대리 매력이 평탄화로 약화되며 배치 내 클래스별 양성 희소로 불안정하다. 성능 개선 기대치가 최저라 실험 선택 기준(성능 기대치)에서 제외한다.

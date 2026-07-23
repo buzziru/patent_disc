@@ -43,23 +43,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Routing table
 
+작업에 필요한 문서를 카테고리 단위로 찾는 표. **파일별 세부 설명·전체 목록은** `docs/README.md`**(문서 인덱스)를 참고한다.**
 
-| 필요할 때                                                 | 문서                                          |
-| ----------------------------------------------------- | ------------------------------------------- |
-| 프로젝트 전체 명세(목표·접근·모델·baseline 주의) — **SSOT**           | `PROJECT.md`                                |
-| 데이터 레이아웃·JSON 스키마·조인·카테고리                             | `docs/data/data.md`                         |
-| 데이터 파이프라인(zip→정제 텍스트→HF Hub→소비 시 토큰화)                 | `docs/data/data-pipeline.md`                |
-| KoBERT baseline 재현(비교 기준점)                            | `docs/experiments/kobert-baseline.md`       |
-| A.X-Encoder(ModernBERT) 실험 계획·프로토콜·공통 함정(dtype·평가 절단) | `docs/experiments/modernbert.md`            |
-| A.X-Encoder 실험별 실측(exp1 8192 / exp2 512, 단일 모델 지표)    | `docs/experiments/modernbert-results.md`    |
-| A.X-Encoder 교차 비교·결론(길이 vs 모델 분해·3모델 bin·멀티라벨 비교)     | `docs/experiments/modernbert-comparison.md` |
-| KLUE-RoBERTa-base 대조군(선택 항목·후순위 — 512 창·절단 규칙·크기 confound) | `docs/experiments/klue-roberta.md`          |
-| 무훈련 분석 3종 실측(오류 분해·임계값 튜닝·토크나이저 분석) + 로짓 재확보                | `docs/experiments/no-train-analysis.md`     |
-| 손실 함수 실험 계획·후보 평가(카디널리티 회수 — ZLPR·ASL·DL2)               | `docs/experiments/loss-function.md`         |
-| 결정 기록·회고(사안별 ADR — 비교선·flat·장문·임계값·앙상블 등)               | `docs/adr/README.md`                        |
-| GPU 훈련 — Colab (`colab` CLI, 기본 경로)                   | `docs/infra/colab-jobs.md`                  |
-| GPU 훈련 — Lightning Job (로컬 SDK + 커스텀 Docker 이미지)      | `docs/infra/lightning-jobs.md`              |
-| GPU 훈련 — RunPod (커스텀 Docker 이미지 + `uv sync --frozen`)  | `docs/infra/runpod-jobs.md`                 |
-| 문서 인덱스·환경 값(org/teamspace/studio)                     | `docs/README.md`                            |
+
+| 필요할 때                                     | 문서                                    |
+| ----------------------------------------- | ------------------------------------- |
+| 프로젝트 전체 명세(목표·접근·모델·baseline 주의) — **SSOT** | `PROJECT.md`                          |
+| 문서 인덱스·환경 값(org/teamspace/studio) — 아래 각 문서의 세부 설명 | `docs/README.md`                      |
+| 데이터 레이아웃·스키마·전처리 파이프라인                     | `docs/data/`                          |
+| 실험 계획·프로토콜·실측(baseline 재현·ModernBERT·손실 함수·대조군·무훈련 분석) | `docs/experiments/`                   |
+| 결정 기록·회고(사안별 ADR)                         | `docs/adr/README.md`                  |
+| GPU 훈련을 외부 잡으로(Colab·Lightning·RunPod)     | `docs/infra/`                         |
 
 

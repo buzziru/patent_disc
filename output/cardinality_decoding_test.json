@@ -1,0 +1,368 @@
+{
+  "num_labels": 188,
+  "kmax": 10,
+  "split_fit": "val",
+  "split_apply": "test",
+  "cal_names": [
+    "raw",
+    "temp",
+    "platt"
+  ],
+  "models": {
+    "focal": {
+      "tag": "modernbert-patent-len512",
+      "kind": "focal",
+      "calibration": {
+        "val_bce": {
+          "raw": 0.00634,
+          "temp": 0.00625,
+          "platt": 0.00598
+        },
+        "best_bce": "platt",
+        "temp_T": 0.9257,
+        "platt_a": 0.972,
+        "platt_b": -0.8307
+      },
+      "diagnostic": {
+        "val": {
+          "k=1": {
+            "n": 9453,
+            "mean_k_gold": 1.0,
+            "raw": 1.242,
+            "temp": 1.181,
+            "platt": 1.1
+          },
+          "k>=2": {
+            "n": 1709,
+            "mean_k_gold": 2.345,
+            "raw": 2.203,
+            "temp": 2.091,
+            "platt": 1.793
+          }
+        },
+        "test": {
+          "k=1": {
+            "n": 9579,
+            "mean_k_gold": 1.0,
+            "raw": 1.246,
+            "temp": 1.184,
+            "platt": 1.1
+          },
+          "k>=2": {
+            "n": 1692,
+            "mean_k_gold": 2.355,
+            "raw": 2.248,
+            "temp": 2.133,
+            "platt": 1.826
+          }
+        }
+      },
+      "baseline": {
+        "val_micro": 0.8642,
+        "test_micro": 0.8601,
+        "slice": {
+          "k=1": {
+            "n": 9579,
+            "micro": 0.8822,
+            "fp": 1549,
+            "fn": 797,
+            "fp_fn": 1.944,
+            "mean_pred": 1.079
+          },
+          "k>=2": {
+            "n": 1692,
+            "micro": 0.7994,
+            "fp": 367,
+            "fn": 1087,
+            "fp_fn": 0.338,
+            "mean_pred": 1.93
+          }
+        }
+      },
+      "oracle_k_ceiling": 0.876,
+      "variants": {
+        "raw": {
+          "margin": 0.05,
+          "val_micro": 0.8636,
+          "test_micro": 0.8579,
+          "delta_pt": -0.217,
+          "slice": {
+            "k=1": {
+              "n": 9579,
+              "micro": 0.876,
+              "fp": 1855,
+              "fn": 668,
+              "fp_fn": 2.777,
+              "mean_pred": 1.124
+            },
+            "k>=2": {
+              "n": 1692,
+              "micro": 0.8084,
+              "fp": 444,
+              "fn": 980,
+              "fp_fn": 0.453,
+              "mean_pred": 2.038
+            }
+          },
+          "k_dist": [
+            0,
+            9063,
+            1686,
+            385,
+            85,
+            33,
+            15,
+            2,
+            2
+          ]
+        },
+        "temp": {
+          "margin": 0.048,
+          "val_micro": 0.8642,
+          "test_micro": 0.8585,
+          "delta_pt": -0.159,
+          "slice": {
+            "k=1": {
+              "n": 9579,
+              "micro": 0.8772,
+              "fp": 1817,
+              "fn": 676,
+              "fp_fn": 2.688,
+              "mean_pred": 1.119
+            },
+            "k>=2": {
+              "n": 1692,
+              "micro": 0.8072,
+              "fp": 430,
+              "fn": 997,
+              "fp_fn": 0.431,
+              "mean_pred": 2.02
+            }
+          },
+          "k_dist": [
+            0,
+            9104,
+            1669,
+            368,
+            81,
+            30,
+            16,
+            2,
+            1
+          ]
+        },
+        "platt": {
+          "margin": 0.006,
+          "val_micro": 0.862,
+          "test_micro": 0.8577,
+          "delta_pt": -0.236,
+          "slice": {
+            "k=1": {
+              "n": 9579,
+              "micro": 0.8829,
+              "fp": 1618,
+              "fn": 730,
+              "fp_fn": 2.216,
+              "mean_pred": 1.093
+            },
+            "k>=2": {
+              "n": 1692,
+              "micro": 0.7871,
+              "fp": 342,
+              "fn": 1177,
+              "fp_fn": 0.291,
+              "mean_pred": 1.862
+            }
+          },
+          "k_dist": [
+            0,
+            9386,
+            1554,
+            243,
+            59,
+            18,
+            10,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    "bce": {
+      "tag": "modernbert-patent-len512-bce",
+      "kind": "bce",
+      "calibration": {
+        "val_bce": {
+          "raw": 0.00749,
+          "temp": 0.0061,
+          "platt": 0.00591
+        },
+        "best_bce": "platt",
+        "temp_T": 1.4954,
+        "platt_a": 0.6175,
+        "platt_b": -0.6707
+      },
+      "diagnostic": {
+        "val": {
+          "k=1": {
+            "n": 9453,
+            "mean_k_gold": 1.0,
+            "raw": 1.096,
+            "temp": 1.184,
+            "platt": 1.108
+          },
+          "k>=2": {
+            "n": 1709,
+            "mean_k_gold": 2.345,
+            "raw": 1.868,
+            "temp": 2.008,
+            "platt": 1.749
+          }
+        },
+        "test": {
+          "k=1": {
+            "n": 9579,
+            "mean_k_gold": 1.0,
+            "raw": 1.096,
+            "temp": 1.185,
+            "platt": 1.108
+          },
+          "k>=2": {
+            "n": 1692,
+            "mean_k_gold": 2.355,
+            "raw": 1.903,
+            "temp": 2.045,
+            "platt": 1.782
+          }
+        }
+      },
+      "baseline": {
+        "val_micro": 0.858,
+        "test_micro": 0.8538,
+        "slice": {
+          "k=1": {
+            "n": 9579,
+            "micro": 0.8782,
+            "fp": 1600,
+            "fn": 828,
+            "fp_fn": 1.932,
+            "mean_pred": 1.081
+          },
+          "k>=2": {
+            "n": 1692,
+            "micro": 0.7864,
+            "fp": 390,
+            "fn": 1150,
+            "fp_fn": 0.339,
+            "mean_pred": 1.906
+          }
+        }
+      },
+      "oracle_k_ceiling": 0.8693,
+      "variants": {
+        "raw": {
+          "margin": 0.05,
+          "val_micro": 0.8568,
+          "test_micro": 0.8531,
+          "delta_pt": -0.067,
+          "slice": {
+            "k=1": {
+              "n": 9579,
+              "micro": 0.8755,
+              "fp": 1752,
+              "fn": 757,
+              "fp_fn": 2.314,
+              "mean_pred": 1.104
+            },
+            "k>=2": {
+              "n": 1692,
+              "micro": 0.7913,
+              "fp": 422,
+              "fn": 1100,
+              "fp_fn": 0.384,
+              "mean_pred": 1.954
+            }
+          },
+          "k_dist": [
+            0,
+            9268,
+            1576,
+            314,
+            67,
+            28,
+            15,
+            3
+          ]
+        },
+        "temp": {
+          "margin": 0.048,
+          "val_micro": 0.856,
+          "test_micro": 0.8512,
+          "delta_pt": -0.262,
+          "slice": {
+            "k=1": {
+              "n": 9579,
+              "micro": 0.8718,
+              "fp": 1881,
+              "fn": 724,
+              "fp_fn": 2.598,
+              "mean_pred": 1.121
+            },
+            "k>=2": {
+              "n": 1692,
+              "micro": 0.7945,
+              "fp": 468,
+              "fn": 1050,
+              "fp_fn": 0.446,
+              "mean_pred": 2.011
+            }
+          },
+          "k_dist": [
+            0,
+            9131,
+            1633,
+            371,
+            78,
+            35,
+            19,
+            4
+          ]
+        },
+        "platt": {
+          "margin": 0.0,
+          "val_micro": 0.8553,
+          "test_micro": 0.8505,
+          "delta_pt": -0.332,
+          "slice": {
+            "k=1": {
+              "n": 9579,
+              "micro": 0.8756,
+              "fp": 1742,
+              "fn": 763,
+              "fp_fn": 2.283,
+              "mean_pred": 1.102
+            },
+            "k>=2": {
+              "n": 1692,
+              "micro": 0.7799,
+              "fp": 389,
+              "fn": 1189,
+              "fp_fn": 0.327,
+              "mean_pred": 1.882
+            }
+          },
+          "k_dist": [
+            0,
+            9310,
+            1589,
+            279,
+            55,
+            30,
+            8
+          ]
+        }
+      }
+    }
+  },
+  "verdict": "negative(전역 micro) — 2번째 양성 신호는 미보정 확률에 존재하고(focal k>=2 Σp_raw 2.25≈2.355) raw·temp 디코딩이 k>=2 slice를 회수(focal +0.90pt/+0.75pt, mean_pred→2.0)하나, 같은 확장이 k=1(85%)을 과대예측해 전역 micro는 음성(focal raw -0.22 / temp -0.16 / platt -0.24). platt은 전역 BCE를 맞추느라 신호를 눌러 k>=2까지 죽인다. proper BCE도 동형. = ADR-0009 FP:FN 부호 뒤집힘의 디코딩 수준 재확인 — 문서별 k(오라클-k, 닫힘)만이 분리 가능."
+}

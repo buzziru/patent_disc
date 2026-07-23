@@ -41,7 +41,10 @@
 
 - **그 숫자를 절대 기준으로 쓰지 말 것.** baseline의 데이터 분할은 **`documentId`가 train·val 양쪽에 존재하는 데이터 누수** 위험이 있어, **누수 없는 데이터셋을 새로 생성**해 비교선을 세운다. 또 `300,240`은 고유 문서 수가 아니라 **(문서,레이블) 쌍 수**이며 로컬 zip은 다른(작은) 스냅샷이다(고유 224,328건 — `docs/data/data.md`).
 - **비교선은 자체 수립**: 재생성한 데이터에서 **test split을 고정**(재생성 split: train 201,895 / val 11,162 / test 11,271)하고, **KoBERT baseline을 그 test set 위에서 직접 재현**해 비교한다(0.8249 숫자를 그대로 쓰지 않음).
-- **주 비교 지표 = 멀티라벨 micro-F1**(τ=0.5, 문서별 다중-핫 예측). macro/sample-F1·LRAP·R-Precision을 함께 본다. 개선 판정은 이 축에서 한다.
+- **주 비교 지표 = 멀티라벨 micro-F1**(τ=0.5, 문서별 다중-핫 예측). 개선 판정과 체크포인트 선택 모두 이 축에서 한다 — 표준성·비교가능성 때문이다. 지표 서열은 **micro(주 헤드라인) · sample-F1(제품-대면 보조, 문서 단위 집합 일치) · macro(188 클래스 견고성 점검) · empty rate(캘리브레이션)**이며 LRAP·R-Precision을 함께 본다.
+  - **sample > micro는 고카디널리티(다라벨) 문서가 코퍼스 평균보다 어렵다는 신호다** — 직접 근거는 k별 분해(`docs/experiments/modernbert-comparison.md`, k≥2 문서가 성능을 끌어내림)가 소유한다.
+  - **micro−macro 격차는 ~0.3pt로 작다** — 평탄화된 분포(중분류당 1,300~2,600건, 실제 출원 분포와 다름) 탓에 micro가 이 데이터에서 가리는 클래스별 약점은 크지 않다. 결과 보고 시 한계로 병기한다.
+  - **여기서의 weighted-F1은 멀티라벨 클래스-weighted이며, baseline의 top-1 weighted-F1(0.8249)과 다른 양이다** — 병기 시 반드시 축을 구분해 표기한다.
 - **top-1 예측 weighted-F1·P@1/3/5는 벤더 baseline의 레거시 지표다.** 공식 baseline이 top-1로 평가했기에 동일 계산으로 재현·병기하지만, 프로젝트의 개선 판정 기준이 아니다. `docs/experiments/kobert-baseline.md`가 "headline"이라 부르는 top-1 weighted-F1은 **baseline 재현 범위에 한정된 표현**이다.
 - **분할은 `documentId`(=고유 특허) 단위.** 제공된 `Training`/`Validation` 폴더는 **7,822개 문서가 양쪽에 겹쳐**(누수) 그대로 쓸 수 없다 — 전체를 고유 문서로 집계한 뒤 재분할한다.
 

@@ -1,6 +1,6 @@
 # ADR-0007 — 손실 함수: 카디널리티 회수 겨냥
 
-- **상태**: 제안 (레시피 확정 후 실험, 판정은 A/B 실측으로)
+- **상태**: 대체됨 (→ [ADR-0009](./0009-loss-axis-closure.md); ZLPR 실측 부정으로 손실 축 종결)
 - **참조**: `docs/experiments/loss-function.md`(계획·프로토콜 SSOT), `docs/experiments/no-train-analysis.md` A, `NEXT_SESSION.md` 2단계
 
 ## 맥락
