@@ -10,6 +10,8 @@
 - 기법(technique)   : 균일 시그니처 `fn(axes, m) -> dict`. `TECHNIQUES`에 등록하면
                       `analyze_model`이 순회해 결과를 합친다. 기법 추가 = 함수 + 레지스트리 한 줄.
 - 교차 모델         : `compare`·`hard_core_mask`·`hierarchy_verdict`.
+- `ErrorAnalysis`   : 위 요소를 묶은 파사드. 노트북은 이 클래스 하나만 import해
+                      `from_labels → set_data → add` 로 로드·분석하고 메서드로 교차 모델을 낸다.
 """
 
 from dataclasses import dataclass, field
@@ -446,3 +448,79 @@ def hierarchy_verdict(tag: str, anchor_rec: dict, lno_rec: dict) -> dict:
             "sibling_enrichment": anchor_rec["sibling_enrichment"],
         },
     }
+
+
+# ── 파사드 ────────────────────────────────────────────────────────────────
+
+class ErrorAnalysis:
+    """오류 분석 세션 — 라벨 공간·공유 축·모델 결과·교차 모델 분석을 한 객체로 묶는다.
+
+    노트북은 이 클래스 하나만 import한다.
+
+        EA = ErrorAnalysis(label_mapping, num_labels=188, tau=0.5)   # 라벨 공간 구성
+        EA.set_data(ds)                                              # 정답·길이·카디널리티 축
+        EA.add(MODELS, cache_dir, split)                            # 로짓 로드→빌드→기법 분석
+        EA.records[tag] / EA.models[tag]                            # 표·저장용 결과
+        EA.compare(base, target) · EA.hard_core() · EA.hierarchy_verdict(tag) · EA.pair_symmetry(tag)
+    """
+
+    def __init__(self, label_mapping: dict, num_labels: int = 188, tau: float = DEFAULT_TAU, bins=None):
+        self.ls = LabelSpace(label_mapping["id2mno"], label_mapping["mno2lno"], num_labels)
+        self.num_labels = num_labels
+        self._tau = tau
+        self._bins = bins
+        self.axes = None
+        self.models = {}     # tag -> ModelResult
+        self.records = {}    # tag -> analyze_model 결과
+
+    def set_data(self, ds) -> "ErrorAnalysis":
+        """데이터셋에서 공유 축(정답 `Y`·길이 bin·`k_gold`)을 구성한다."""
+        self.axes = EvalAxes.from_dataset(ds, self.ls, self.num_labels, tau=self._tau, bins=self._bins)
+        return self
+
+    # 공유 축 접근자(set_data 이후) — 노트북 표·verify 셀에서 참조
+    @property
+    def Y(self): return self.axes.Y
+
+    @property
+    def length_bin(self): return self.axes.length_bin
+
+    @property
+    def k_gold(self): return self.axes.k_gold
+
+    @property
+    def bins(self): return self.axes.bins
+
+    @property
+    def tau(self): return self.axes.tau
+
+    @property
+    def n(self) -> int: return len(self.axes.Y)
+
+    def add(self, models, cache_dir, split, techniques: dict = TECHNIQUES) -> "ErrorAnalysis":
+        """모델 목록의 로짓을 읽어 `ModelResult` 빌드 + 기법 레지스트리 분석까지 수행."""
+        for d in models:
+            tag = d["tag"]
+            logits = load_logits(cache_dir, tag, split)
+            assert logits.shape == (self.n, self.num_labels), tag
+            m = ModelResult.build(self.axes, tag, logits)
+            self.models[tag] = m
+            self.records[tag] = analyze_model(self.axes, m, techniques)
+        return self
+
+    def compare(self, base_tag: str, target_tag: str, component: str = "loss") -> dict:
+        """두 모델의 top-1 앵커 오류 차집합(fixed/broken)."""
+        return compare(self.axes, self.models[base_tag], self.models[target_tag], component)
+
+    def hard_core(self, tags=None) -> np.ndarray:
+        """지정 모델(기본 전체)이 공통으로 틀린 앵커 오류 마스크."""
+        return hard_core_mask([self.models[t] for t in (tags or self.models)])
+
+    def hierarchy_verdict(self, tag: str) -> dict:
+        """앵커·Lno 결과로부터 계층 확장 판정."""
+        r = self.records[tag]
+        return hierarchy_verdict(tag, r["anchor_error"], r["lno_metrics"])
+
+    def pair_symmetry(self, tag: str):
+        """혼동 행렬의 무향 쌍 질량·대칭도, off-diagonal 합계."""
+        return pair_symmetry(self.models[tag].confusion, self.ls)
