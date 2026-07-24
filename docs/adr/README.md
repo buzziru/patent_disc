@@ -26,3 +26,4 @@
 | 0009 | 손실 함수 축 종결 — 카디널리티는 전역 손실로 회수 불가(FP:FN 부호 뒤집힘); ASL·BCE 후 종결, DL2 미착수 | 수용 | [0009](./0009-loss-axis-closure.md) |
 | 0010 | 데이터 클리닝 — 입력-동일 라벨 충돌·중복 336문서 제거(class ambiguity 발단, 재토큰화 없이 토큰본 필터) | 수용 | [0010](./0010-data-cleaning.md) |
 | 0011 | 자원 제약 하 실험 방법론 — 단일 시드(signature 정합으로 방어) + 노트북 중심 코드(성숙 후 src 전환) | 수용 | [0011](./0011-resource-constrained-methodology.md) |
+| 0012 | 표현·풀링 축 종결 — 장문 열화는 본질적 난이도(고정 풀링 프로브 B3 최대 +0.32pt, concat 무상보); 학습형 attention 풀러 디프리오리티 | 수용 | [0012](./0012-representation-pooling-closure.md) |

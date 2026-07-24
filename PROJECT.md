@@ -60,6 +60,7 @@
 | 앙상블 | 불채택 | 운영 환경이 단일 모델을 요구한다. 3모델 로짓평균이 앵커 weighted-F1을 0.8256 → 0.8327(+0.71pt)로 올리나 추론 비용이 3배다. **단, 앙상블을 훈련 시점 teacher로만 쓰고 배포는 단일 student인 KD는 별개 활성 축이다**(추론 단일 모델 유지 — `docs/experiments/knowledge-distillation.md`) |
 | 입력 필드 조합 실험 | 후순위 | long-document 축의 추가 검증에 해당하며 목표가 아니다. 전 실험은 고정 조합을 쓴다 |
 | long-document 가설 추가 검증 | 종료 | 「long-document 축」에서 실측 완료 |
+| 표현·풀링(풀링 교체·label-aware attention 헤드) | 불채택 | hidden-state 덤프 + 고정 풀링 동결 프로브에서 항희석 풀링이 최장 bin에서 mean 대비 +0.32pt(게이트 아래)·concat 무상보 — 장문 열화는 표현·풀링·헤드로 회수 안 되는 본질적 난이도([ADR-0012](docs/adr/0012-representation-pooling-closure.md), `docs/experiments/longdoc-degradation.md`「풀링 실측」) |
 
 ## 스코프·한계
 
