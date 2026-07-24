@@ -40,6 +40,7 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 - `[experiments/loss-function.md](./experiments/loss-function.md)` — **손실 함수 축**(카디널리티 회수 겨냥): 후보 평가·프로토콜 + ZLPR·ASL·BCE 실측(전부 focal 대비 열세 → 축 종결, [ADR-0009](./adr/0009-loss-axis-closure.md))
 - `[experiments/cardinality-decoding.md](./experiments/cardinality-decoding.md)` — **카디널리티 디코딩**(문서별 기대-F1 plug-in): 손실 종결 후 남은 카디널리티 헤드룸을 추론 결정 규칙으로 회수 시도 → **음성**(캘리브 후에도 k≥2 Σp가 신호 부재, micro 후퇴). 오라클-k +1.60pt는 도달 불가 상한으로 확정(`notebook/10_01`)
 - `[experiments/longdoc-degradation.md](./experiments/longdoc-degradation.md)` — **장문 열화 진단**(표현 vs 결정, label-aware attention 게이트): 무훈련 로짓 게이트로 저하가 카디널리티와 독립이나 표현 붕괴가 아님(최장 문서도 정답 top-5 ~98% 잔존)을 보여 풀링 헤드룸을 <~0.5pt로 경계 → label-aware attention은 기대 이득 얇은 레버로 디프리오리티(`notebook/10_02`)
+- `[experiments/knowledge-distillation.md](./experiments/knowledge-distillation.md)` — **지식 증류(KD) 축**(이종 앙상블 → 단일 2048 student): 앙상블 헤드룸을 단일 모델로 회수(앙상블 배포 없이). 무훈련 헤드룸 게이트 **GREEN**(정리 test 앙상블 micro +0.73pt·k≥2 +1.42pt, `output/kd_gate_ensemble.json`) → 프로토콜 확정(teacher exp1/ASL/KoBERT·확률공간 soft target·student len2048)
 - (예정) 데이터 EDA/필드 길이 분석, 클래스 불균형 노트, 실험별 설정·결과 요약, 모델/입력 필드 선택 근거
 
 ### 결정 기록·회고 (`adr/`)
