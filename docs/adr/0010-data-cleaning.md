@@ -1,7 +1,7 @@
 # ADR-0010 — 데이터 클리닝: 입력-동일 라벨 충돌·중복 제거
 
-- **상태**: 수용 (검출·제거 완료, Hub 반영 대기 — `notebook/10_03` DRY_RUN)
-- **참조**: `../experiments/longdoc-degradation.md`(발단 가설), `../data/data.md`「주의」(사실·수치 SSOT), 노트북 `../../notebook/10_03_Label_Conflict_Clean.ipynb`, `../../output/label_conflict_docs.json`(제거 목록)·`../../output/per_class_f1_modern512.json`(class ambiguity 확증)·`../../output/headline_cleaned_test.json`(영향 실측)
+- **상태**: 수용 (제거·Hub 반영 완료 — `patent-clean-text`·`patent-clean-text-modernbert-tokenized`. RoBERTa·KoBERT 토큰화본은 미반영)
+- **참조**: `../experiments/longdoc-degradation.md`(발단 가설), `../data/data.md`「주의」(사실·수치 SSOT), 노트북 `../../notebook/10_03_Label_Conflict_Clean.ipynb`·`../../notebook/11_02_CleanData_Error_Analysis.ipynb`(재훈련 오류 분석), `../../output/label_conflict_docs.json`(제거 목록)·`../../output/per_class_f1_modern512.json`(class ambiguity 확증)·`../../output/headline_cleaned_test.json`(로짓 재계산 영향)·`../../output/error_analysis_cleandata_vs_exp2.json`(클리닝 성분 paired 실측)
 
 ## 맥락
 
@@ -32,5 +32,6 @@
 ## 결과·영향
 
 - **데이터 무결성 개선이 주 산출물이며, 지표 이동은 무시할 수준이다.** 저장 로짓에서 제거 행을 빼 재계산한 결과 전 모델 micro **−0.02~0.03pt**(exp1 0.8685→0.8683), 서열·격차 불변(`headline_cleaned_test.json`). 클리닝이 결론을 바꾸지 않음을 실측으로 확인했다.
-- **clean-data/충돌의 훈련 효과는 미측정이며 재훈련으로만 판정한다.** 로짓 행 제거는 eval 누수만 교정하지 훈련 오염을 되돌리지 못한다. 기대 효과는 볼륨(train 0.04%)·확산(74클래스)으로 작고 런 간 노이즈(~±0.1pt)와 겹쳐, 단일 런 aggregate에서 분리되지 않는다. 판정하려면 연루 클래스(특히 EB01, 7그룹·F1 0.8189) per-class F1을 paired로 대조해야 한다.
+- **clean-data/충돌의 훈련 효과는 재훈련 후 per-class paired 대조로 측정했고, 유의한 이득으로 회수되지 않았다.** 로짓 행 제거는 eval 누수만 교정하지 훈련 오염을 되돌리지 못하므로, 클리닝본 재훈련(`11_01`)과 exp2를 같은 정리 test(11,244)에서 대조했다(`11_02`). 클리닝이 손댄 대상은 충돌 연루 클래스이고 레시피 변화는 두 집단에 함께 작용하므로, 충돌 연루 74클래스 대 비연루 114클래스의 per-class ΔF1 diff-in-diff가 클리닝 성분의 추정치다. 실측 diff-in-diff는 **−0.18pt**(연루 −0.17 · 비연루 +0.02), 집단 무작위 재배치 순열검정(10,000회) **p=0.628** — 연루 클래스에 유의한 초과 이득이 없다. 기대대로 효과는 볼륨(train 0.04%)·확산(74클래스)으로 작아 런 간 노이즈(~±0.1pt)와 분리되지 않는다. 연루 최상위 EB01(7그룹)만 +3.82pt로 올랐으나 연루 집단 전체 신호는 없다. 클리닝은 성능 레버가 아니라 **데이터 무결성 조치**로 종결한다 — 필요한 작업이었으나 데이터 비중이 작아 모델링 이득으로 회수되지 않는다.
+- **clean-data 위 full 재훈련(`11_01`)은 aggregate 중립을 재확인한다.** clean 데이터 + 08_01 레시피(eff128/lr4.8e-4) focal full 런은 test micro 0.8588 · empty 1.17%로, 직전 focal(exp2 0.8601)과 micro 잡음 내 동률이다([../experiments/modernbert-results.md](../experiments/modernbert-results.md)). 다만 배치·lr이 동시에 바뀌어 aggregate만으로는 **클리닝의 훈련 효과를 분리하지 못하며**, 분리는 위 per-class paired 대조(`11_02`)가 담당한다. 이 런은 손실 축(`09_xx`)의 레시피 정합 focal 기준선도 겸해 [ADR-0009](0009-loss-axis-closure.md) 종결을 보강한다.
 - **미반영 작업**: `10_03`을 `DRY_RUN=False`로 실행해 `ingyoun/patent-clean-text`·`...-modernbert-tokenized` push, RoBERTa·KoBERT 토큰화본도 같은 336 `document_id`로 재정리(`../../NEXT_SESSION.md`).

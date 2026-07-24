@@ -77,3 +77,18 @@ exp2는 **512 창에서도 네 지표 모두 KoBERT를 넘는다** — 개선의
 
 - **랭킹**: LRAP 0.9318 / R-Precision 0.8895.
 - **앵커 p@k**: p@1 0.8999 / p@3 0.9661 / p@5 0.9791.
+
+## clean-data 512 실측 (08_01 레시피)
+
+> 훈련: `notebook/11_01_CleanData_Recipe.ipynb`(실행 결과 `notebook_output/11_01_CleanData_Recipe.ipynb`). 지표 SSOT: `output/modernbert-patent-len512-b128_metrics.json`(훈련 중 test 평가 — exp1/exp2의 전용 평가와 달리 length bin·ranking 분해는 미산출). 데이터는 [ADR-0010](../adr/0010-data-cleaning.md) 클리닝본(입력-동일 라벨 충돌·중복 제거, test 11,244).
+
+**구성**: exp2와 손실(`FocalLoss(0.25, 2)`)·길이(`max_len=512`)는 같고 **레시피와 데이터가 다르다** — `08_01/08_02`로 확정한 eff_batch 128 · lr 4.8e-4(linear scaling) · 12 epoch, clean 데이터. 손실 축(`09_xx`)이 갖지 못했던 **레시피 정합 focal 기준선**이다.
+
+**test**: micro **0.8588** · macro 0.8565 · sample 0.8738 · empty_rate 1.17% · anchor(top-1 weighted) 0.8215.
+
+### 해석
+
+- **focal micro는 레시피에 불변이다.** eff8/lr3e-5(exp2 0.8601)과 eff128/lr4.8e-4(0.8588)이 잡음 내에서 같다 — 배치·lr 16배 상향은 micro를 움직이지 않는다. 단일 run이라 ±0.1~0.2pt대 seed 잡음과 −0.13pt를 구분하지 않는다.
+- **배치 상향의 이득은 캘리브레이션 축에 나타난다.** empty rate가 exp2 1.79%→1.17%로 내렸다. `09_xx` eff128 런이 손실 무관하게 focal eff8보다 낮은 empty rate를 보여([loss-function.md](loss-function.md) 실측) 이 이동을 손실이 아니라 **배치 성분**으로 귀속한다. micro 상한은 512 focal에서 이미 포화에 가까워 잡음 감소가 천장을 밀지 못한다.
+- **손실 축 종결을 보강한다.** 동일 레시피(eff128/lr4.8e-4)에서 focal이 BCE·ZLPR·ASL을 모두 앞선다([loss-function.md](loss-function.md) 실측 표) — 손실 후보들의 열세가 레시피 confound가 아님을 레시피 정합 focal로 확정한다([ADR-0009](../adr/0009-loss-axis-closure.md)).
+- **클리닝 성분은 이 런에서 분리되지 않는다.** 이 런과 exp2를 같은 정리 test에서 대조한 per-class paired diff-in-diff(충돌 연루 74클래스 대 비연루 114클래스)가 유의하지 않다(`11_02`, `output/error_analysis_cleandata_vs_exp2.json`) — 판정·수치는 [ADR-0010](../adr/0010-data-cleaning.md) 「결과·영향」.
