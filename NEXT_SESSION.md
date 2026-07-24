@@ -43,6 +43,16 @@
 - **확정 설계**: teacher 3종 고정 · soft target = **확률공간** 가중 앙상블(exp1 0.5/ASL 0.2/KoBERT 0.3, val 선택) · 손실 `(1−λ)·focal + λ·BCE(p,q)` λ=0.5 · **student len2048**(전이 가능·8192 대비 저비용) · 필수 2런(2048 focal 통제 + 2048 KD).
 - **다음 착수 = teacher soft target을 정리 train(201,616)에 덤프.** exp1@8192 추론이 주 비용(GPU 수 시간), ASL·KoBERT@512 저렴. 순차 샘플러로 행 순서를 `document_id`에 고정(순열 함정).
 
+## 도메인 사전학습 축 (신규) — TAPT 채택, 사용자 선행 학습 후 진행 (보류)
+
+"장문 열화가 본질적 난이도라면 특허 코퍼스로 사전학습된 표현은 다른가"를 검토한 결과, **자체 코퍼스 TAPT**를 단일 레버로 남겼다. 현재 사용자가 TAPT를 선행 학습한 뒤 진행하기로 해 **보류** 상태다.
+
+- **성격**: 기본 표현 품질(백본) 축으로, 닫힌 장문·풀링·헤드 갈래의 재탕이 아니다. 단 동기는 "장문 열화 처방"이 아니라 "전 구간 level 상승"이다 — 3절 모델-vs-창 분해가 slope 개선을 배제한다(모델 교체는 slope을 못 편다, B3 모델 성분 +0.14pt). "본질적 난이도"는 *일반 도메인 백본에서* 조건부다.
+- **폐기된 대안**: (1) 기성 KorPatBERT/KorPatELECTRA — 소속인증·사용협약으로 **이용 불가**, 게다가 512 컨텍스트. (2) 토크나이저 갈래(형태소+특허 vocab 재현·KoELECTRA 이식·복합명사 vocab 추가) — **세그멘테이션 이득이 2048 창에서 이미 소멸**(절단은 >2048 꼬리 ~4.9%뿐), 표현 이득은 사전학습 없이는 실현 불가. (3) 임베딩-only 계속학습 — 신규 vocab이 없으면 명분 소멸.
+- **TAPT 설계(잠정)**: 자체 **train split만** MLM(라벨 무시, **test는 MLM에서 제외** — 누수 방지). 예산 ~0.34B 토큰/epoch × 3~6 epoch ≈ 1~2B → A40 ~7~14h · **~$3~6**. 시퀀스는 커리큘럼(1024~2048 위주 + 마지막 짧은 8192). 작은 코퍼스라 LR·epoch 보수적(MLM 과적합 함정).
+- **판정 축**: TAPT→분류 파인튜닝 후 **exp1 대비 멀티라벨 micro·R-Precision**(길이 bin별로 slope 불변 재확인). KorPat 비교선이 닫혀 TAPT가 도메인 레버의 **첫 실측이자 후보 해법**을 겸한다. exp1을 유의 폭으로 못 이기면 축을 접는다.
+- **비용 기준선**: A40 @512 ≈ 41,500 tok/s(분류 풀런 8h20m 역산). A100 PCIe ~2배지만 시간당 3.16배라 A40이 ~37% 저렴. full DAPT(3B 커리큘럼)는 A40 ~$12 — TAPT로 신호 확인 후에만 확장 검토.
+
 ## 남은 일
 
 1. **`11_01` 로짓 재덤프**(선행 코드 수정 완료) — `output/logits_modernbert-patent-len512-b128_{val,test}.npy`는 길이 그룹 순열 상태라 **폐기 대상**이다(위 「함정」). `src/patent_train`에 추론 진입점을 넣었다(`TrainConfig.for_inference` + `build_model(checkpoint=)`); **`notebook/11_03_Redump_Logits.ipynb`를 Colab에서 실행**해 Hub의 `ingyoun/A.X-patent-len512-b128`을 불러 val/test 로짓만 다시 덤프한다(훈련 불필요, 추론 수 분). `predict_logits`가 순차 샘플러로 되돌리고 행 순서를 assert하며, predict 지표 micro가 SSOT 0.8588과 ~1e-3인지로 모델 복원을 검증한다. 회수 후 `output/`의 순열 파일을 덮어쓰면 `notebook/11_02_CleanData_Error_Analysis.ipynb`가 그대로 완주한다. 정리 로짓의 행 축 SSOT는 새로 생성한 `output/doc_ids_clean_{val,test}.json`(구 `doc_ids_*`는 구 로짓 재현용 유지, `docs/data/data.md`「주의」). **비교선은 정리 test 재계산값(exp2 0.8599)**이다 — `11_01`은 정리 test(11,244)에서 평가되므로 구 test 수치(0.8601)와 직접 대면 안 된다. `11_01` 헤드라인(test micro 0.8588)은 순열과 무관하게 유효하다.
