@@ -1,0 +1,76 @@
+{
+  "note": "k 분리 가능성 실측 — 확률에서 k=1 vs k>=2 를 얼마나 가르나(임계값 아이디어 상한) + 전체 로짓 readout이 Σp보다 나은가(사후 k 신호 상한). 적합=clean val / 평가=clean test 11,244, 주 모델 modernbert-patent-len512-b128. 산출 scratchpad/k_separability.py, 재현 가능(로지스틱 lbfgs 결정적).",
+  "target": "k>=2 검출(이진). test 양성률 0.150",
+  "auc_k1_vs_kge2": {
+    "sum_p": {
+      "auc": 0.8911,
+      "ap": 0.6393
+    },
+    "p2_second_prob": {
+      "auc": 0.8938,
+      "ap": 0.608
+    },
+    "p2_over_p1": {
+      "auc": 0.8861,
+      "ap": 0.55
+    },
+    "sum_p_beyond_top1": {
+      "auc": 0.8881,
+      "ap": 0.6277
+    },
+    "logistic_full_188_logits": {
+      "auc": 0.8793,
+      "ap": 0.6167
+    },
+    "logistic_top10_sorted_p": {
+      "auc": 0.9004,
+      "ap": 0.6605
+    }
+  },
+  "auc_k1_vs_k2_only": {
+    "note": "k>=3 제외. test 양성률 0.118",
+    "sum_p": {
+      "auc": 0.8648,
+      "ap": 0.4581
+    },
+    "p2_second_prob": {
+      "auc": 0.8739,
+      "ap": 0.4855
+    },
+    "p2_over_p1": {
+      "auc": 0.866,
+      "ap": 0.428
+    },
+    "sum_p_beyond_top1": {
+      "auc": 0.8611,
+      "ap": 0.4436
+    },
+    "logistic_full_188_logits": {
+      "auc": 0.8483,
+      "ap": 0.4317
+    },
+    "logistic_top10_sorted_p": {
+      "auc": 0.8767,
+      "ap": 0.4944
+    }
+  },
+  "sum_p_best_threshold": {
+    "criterion": "max F1 on k>=2 detection",
+    "threshold": 2.0,
+    "f1": 0.622,
+    "precision": 0.572,
+    "recall": 0.681,
+    "tp": 1151,
+    "fp": 861,
+    "fn": 538,
+    "read": "k>=2 실제 1,689건 중 검출과 오탐. 오탐이 이미 과대예측 중인 85% k=1에 얹혀 micro를 깎는다."
+  },
+  "kle5_cap_nonbinding": {
+    "sum_p_gt_5_share": 0.0051,
+    "sum_p_gt_3_share": 0.0457,
+    "median_sum_p_k1": 1.182,
+    "median_sum_p_kge2": 2.314,
+    "real_k_gt5_docs": 16,
+    "read": "디코더는 사실상 k in {1,2,3}에서만 움직인다 — k<=5 상한은 결정에 걸리지 않는다."
+  }
+}
