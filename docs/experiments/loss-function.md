@@ -102,21 +102,40 @@ loss_func.md 초안은 임계값 민감도 기준(ZLPR ≳ DL2 > ASL)과 서사�
 
 ## 실측
 
+동일 레시피(eff_batch 128 · lr 4.8e-4 · 12 epoch)의 손실별 test 지표(τ=0.5 keep). focal은 이 레시피의 full 런(clean 데이터, `11_01`, [modernbert-results.md](modernbert-results.md))으로, 손실 후보들이 갖지 못한 **레시피 정합 기준선**이다.
+
+| 손실 | micro | macro | sample | empty | anchor |
+| --- | --- | --- | --- | --- | --- |
+| **focal** (`11_01`) | **0.8588** | 0.8565 | 0.8738 | 1.17% | 0.8215 |
+| BCE (`09_03`) | 0.8538 | 0.8508 | 0.8689 | 1.06% | 0.8133 |
+| ZLPR (`09_01`) | 0.8493 | 0.8462 | 0.8662 | 0.96% | 0.8122 |
+| ASL (`09_02`) | 0.8362 | 0.8366 | 0.8646 | 0.43% | 0.8148 |
+
+- **focal이 네 손실 중 micro 최고다** — BCE +0.50pt · ZLPR +0.95pt · ASL +2.26pt. 손실 교체로 focal micro를 넘은 후보는 없다.
+- **empty rate는 eff128 런이 손실 무관하게 focal eff8(exp2 1.79%)보다 낮다.** 배치 상향의 이득이 micro 상한이 아니라 캘리브레이션 축에 나타남을 손실 4종 교차로 보인다.
+- focal 행만 clean 데이터라 09_xx와 test가 27건 다르나, 서열 마진이 그보다 커 판정 불변.
+
 ### ZLPR — 음성 (미채택)
 
 - **SSOT**: `output/modernbert-patent-len512-ZLPR_test_metrics.json` · 노트북 `notebook_output/09_01_Loss_ZLPR_output.ipynb`. 오류 분석 `output/error_analysis_modernbert-patent-len512-zlpr.json`·`output/error_analysis_loss_vs_focal.json`(노트북 `notebook/09_04_Loss_Error_Analysis.ipynb`).
 - **레시피**(08_01/08_02로 확정): len512 · eff_batch 128 · lr 4.8e-4 · 12 epoch. focal 대체 지점(`compute_loss`)만 `ZlprLoss`로 교체하고 나머지 경로는 공통 프로토콜 고정. 평가 임계는 ZLPR native(logit>0 ⟺ sigmoid≥0.5)라 τ=0.5 지표가 손실에 정합한다.
 - **최종 test**: micro **0.8493** · macro 0.8462 · sample 0.8662 · empty_rate 0.96% · anchor(top-1 weighted) 0.8122. best val micro 0.8526(checkpoint-18147).
 
-**판정: focal 대비 열세 → 미채택.** 동일 레시피(eff128 / lr4.8e-4) focal 탐색 런(`08_02`, 2 epoch) 대비 val micro가 첫 eval부터 열세이며 격차가 벌어진다:
+**판정: focal 대비 열세 → 미채택.** ZLPR는 12 epoch을 다 써 test micro 0.8493에 그쳐 비교 기준선 exp2 focal(§비교 기준선, 0.8601)을 1.08pt 밑돈다.
 
-| epoch | focal (`08_02`) | ZLPR (`09_01`) | Δ           |
-| ----- | --------------- | -------------- | ----------- |
-| 0.5   | 0.7696          | 0.7055         | focal +6.4pt |
-| 1.0   | 0.8143          | 0.7351         | focal +7.9pt |
-| 1.5   | 0.8352          | 0.7453         | focal +9.0pt |
+**조기 곡선은 판정 근거가 아니다 — 초반은 오히려 ZLPR이 앞선다.** 동일 레시피(eff128 / lr4.8e-4)로 돌린 focal은 2 epoch 탐색 런(`08_02`)뿐이라 에폭 눈금이 맞지 않는다. `linear` 스케줄과 `warmup_ratio=0.1`은 총 스텝에 비례하므로, 2 epoch 런은 0.2 epoch에 피크 lr을 지나 곧바로 어닐링에 들어가고 12 epoch 런은 1.2 epoch까지 워밍업 중이다 — 같은 에폭 지점이 lr 궤적에서 전혀 다른 자리다. 스케줄이 같은 12 epoch 런끼리 비교한다(val micro):
 
-focal은 이 레시피에서 1.5 epoch 만에 val micro 0.835로 exp2 수렴치(0.8601) 궤도에 오른다. 배치 상향(L4→A40에 따른 것)은 focal에서 정상 작동하므로 열세 원인은 배치가 아니라 손실로 귀속된다. ZLPR는 12 epoch을 다 써 test micro 0.8493에 그쳐 비교 기준선 exp2 focal(§비교 기준선, 0.8601)을 1.08pt 밑돈다.
+| epoch | ZLPR (`09_01`) | BCE (`09_03`, 동일 레시피) | focal exp2 (`05_01`) |
+| ----- | -------------- | ---------------------- | ------------------- |
+| 0.5   | **0.6919**     | 0.6027                 | 0.6396              |
+| 1.0   | 0.7055         | 0.7010                 | 0.7158              |
+| 1.5   | 0.7390         | 0.7465                 | 0.7413              |
+| 2.0   | 0.7582         | 0.7613                 | 0.7959              |
+
+- **BCE가 이 비교의 통제군이다** — ZLPR과 배치·lr·스케줄이 같고 focal에서 γ만 뺀 같은 계열이다. exp2는 eff_batch 8 · lr 3e-5이라 레시피 축은 다르고 스케줄 형상(12 epoch · warmup 0.1 · 0.5 epoch마다 eval)만 정합한다. 곡선 원본은 [training-curves.md](training-curves.md).
+- ZLPR의 0.5 epoch 우위는 zero-bound가 빈 예측을 억제한 효과다(empty rate 13.1% vs BCE 34.5%). 1.5 epoch에 BCE가 따라잡고 이후 격차가 벌어져 최종 test는 BCE 0.8538 대 ZLPR 0.8493이다.
+
+배치 상향(L4→A40에 따른 것)이 이 손실 계열에서 정상 작동한다는 확인은 §BCE 「부수 확인」에 있다 — 열세 원인은 배치가 아니라 손실로 귀속된다.
 
 **오류 분석(09_04, focal exp2 대비).** 열위의 기제는 "적응 임계는 작동했으나 회수 질량이 표적을 빗나갔다"로 요약된다.
 
@@ -131,6 +150,7 @@ focal은 이 레시피에서 1.5 epoch 만에 val micro 0.835로 exp2 수렴치(
 
 - **SSOT**: `output/modernbert-patent-len512-asl_test_metrics.json` · 노트북 `notebook_output/09_02_Loss_ASL.ipynb`. 오류 분석 `output/error_analysis_modernbert-patent-len512-asl.json`·`output/error_analysis_loss_vs_focal.json`(노트북 `notebook/09_04_Loss_Error_Analysis.ipynb`).
 - **레시피**(08_01/08_02로 확정): len512 · eff_batch 128 · lr 4.8e-4 · 12 epoch · γ+=0 / γ−=4 / margin=0.05. focal 대체 지점(`compute_loss`)만 `AslLoss`로 교체하고 나머지 경로는 공통 프로토콜 고정.
+- ⚠️ **리덕션 한계**: 이 실측은 ASL 원 논문 정의대로 라벨 축 합(문서당 합) 리덕션으로 돌아, 요소 평균인 focal·BCE 대비 손실·기울기 스케일이 C=188배다 — 손실 함수만 통제된 비교는 아니다. 영향의 분리는 아래 「리덕션 스케일」 절. `patent_train.losses`는 요소별 손실을 모두 요소 평균으로 통일해 이 축을 제거했다.
 - **최종 test**: micro **0.8362** · macro 0.8366 · sample 0.8646 · empty_rate 0.43% · anchor(top-1 weighted) 0.8148. best val micro 0.8416.
 
 **판정: focal 대비 열세(−2.39pt) → 미채택.** 열세의 기제가 ZLPR과 다르다 — **표적(k≥2)은 회수했으나 다수(k=1)를 부쉈다.** focal의 `alpha`가 무력이라 양성/음성 비대칭은 이 프로젝트 최초 검증이었다(랭킹 손실 ZLPR과 성격이 달라 중복 아님).
@@ -142,6 +162,25 @@ focal은 이 레시피에서 1.5 epoch 만에 val micro 0.835로 exp2 수렴치(
 - **순효과.** 문서 85%인 k=1의 손실이 15% k≥2의 이득을 압도해 전역 micro가 −2.39pt. top-1 차집합도 fixed 341 vs broken 438로 순 −97.
 - **전역 손실이 못 넘는 벽의 실증.** k=1(과대예측)과 k≥2(과소예측)는 정반대 operating point를 요구하는데, 양성 recall을 미는 단방향 재배치는 k≥2를 살리며 k=1을 함께 밀어 둘을 동시에 만족시키지 못한다. [ADR-0009](../adr/0009-loss-axis-closure.md)가 예측한 "k=1 FP로 micro 깎을 위험"의 실현이며, ZLPR(랭킹 질량이 k=1 FP로 샘)과 다른 경로로 같은 벽에 걸린다.
 
+**리덕션 스케일 — 통제되지 않은 축의 영향 분리.** 라벨 축 합 리덕션으로 기울기 스케일이 focal·BCE의 188배인 것이 열위의 원인일 수 있는지를 채널별로 가른다. 결론은 **측정 가능한 훼손이 없고 판정도 불변**이다.
+
+- **AdamW 업데이트는 손실 스케일에 불변이다.** 손실에 상수 c를 곱하면 1·2차 모멘트가 함께 c배라 `m̂/(√v̂+ε)`에서 상쇄된다. decoupled weight decay는 기울기와 무관하고 스텝 크기도 불변이라 wd:step 비율이 유지된다. ε=1e-8은 √v̂이 커질수록 무의미해져 스케일 상향 쪽이 오히려 이상적 Adam에 가깝고, bf16은 지수 범위가 fp32와 같아 188배 상향으로 오버플로가 나지 않는다(위험은 언더플로 방향이다).
+- **유일한 실질 채널은 gradient clipping이다.** `max_grad_norm`을 지정하지 않아 HF 기본값 1.0이 적용됐고, 기울기 norm이 188배인 ASL 런은 사실상 매 스텝 클리핑에 걸린다. 다만 클리핑은 `g/‖g‖`로 **방향을 정확히 보존하고 스텝 간 크기 변동만 제거**한다 — Adam이 이미 크기를 정규화하므로 잔여 효과는 모멘텀 가중의 평활화다. 실효 학습률의 이동이 아니라 학습 동역학의 완만한 변화로 읽는다.
+- **BCE가 스케일 청정 통제군이다.** BCE 런은 ASL과 동일 레시피(eff128 / lr4.8e-4 / 12 epoch)에 focal과 동일한 요소 평균 리덕션이라, 스케일만 다르고 나머지가 같은 대조가 된다. 임계값 무관 지표에서 ASL은 이 통제군과 구별되지 않는다.
+
+
+| 런                       | anchor p@1 | k=1 R-Precision | k≥2 R-Precision |
+| ----------------------- | ---------- | --------------- | --------------- |
+| focal exp2 (05_01 레시피)  | 0.8999     | 0.8944          | 0.8620          |
+| **ASL** (라벨 축 합, ×188)  | **0.8913** | **0.8849**      | **0.8453**      |
+| BCE (요소 평균, 동일 레시피)     | 0.8915     | 0.8863          | 0.8448          |
+| ZLPR (문서 평균)            | 0.8912     | 0.8860          | 0.8492          |
+
+
+- 188배 스케일이 표현 학습을 훼손했다면 드러났어야 할 랭킹 품질 손실이 관측되지 않는다 — ASL은 통제군 대비 p@1 −0.02pt, k≥2 R-Precision **+0.05pt**다. 09 세 런이 exp2 focal보다 일제히 ~0.9pt 낮은 것은 특정 손실이 아니라 레시피 공통분이며, 레시피가 이 손실 계열에 공정하다는 확인은 §BCE 「부수 확인」에 있다.
+- **판정에 미치는 영향.** 전역 micro −2.39pt 중 약 −0.6pt는 이 레시피 공통분(BCE −0.62pt와 같은 크기)이고 나머지가 operating point 이동분이다. 열위 기제 자체는 스케일 불변이다 — argmin(c·L) = argmin(L)이며, 관측된 recall push(k≥2 과소예측 회수 + k=1 FP 폭증)는 손실의 크기가 아니라 모양(γ+/γ− 분리 + margin)이 만든다. 리덕션을 맞춰 재실행해도 [ADR-0009](../adr/0009-loss-axis-closure.md)의 FP:FN 부호 뒤집힘 논증은 그대로 성립하므로 **미채택 판정은 유지된다.** 남는 미검증분은 (γ−, m, lr)을 재튜닝한 ASL이 같은 tradeoff 곡선의 다른 점에 앉는가이며, 이는 스케일이 아니라 하이퍼파라미터 축의 질문이다.
+- ⚠️ **−2.39pt는 τ=0.5 전역 micro 한정 진술이다.** 표적 슬라이스 k≥2 micro는 ASL 0.8046으로 네 손실 중 최고이며 exp1(len8192, 0.8048)과 사실상 동률이다. ASL의 열위는 학습 실패가 아니라 손실이 의도적으로 이동시킨 operating point의 결과다.
+
 ### BCE — 진단 (미채택)
 
 - **SSOT**: `output/modernbert-patent-len512-bce_test_metrics.json` · 노트북 `notebook_output/09_03_Loss_BCE.ipynb`. 오류 분석 `output/error_analysis_modernbert-patent-len512-bce.json`.
@@ -152,7 +191,7 @@ focal은 이 레시피에서 1.5 epoch 만에 val micro 0.835로 exp2 수렴치(
 
 **오류 분석(09_04, focal exp2 대비).** BCE는 focal에서 γ만 뺀 같은 계열이라 **operating point가 focal과 사실상 동일**하다 — k=1 fp/fn 1.932(focal 1.944) · k≥2 fp/fn 0.339(focal 0.338) · 전역 FP/FN 1,990/1,978(focal 1,916/1,884)로 균형이 focal과 겹친다. 격차 −0.62pt는 **k≥2에 집중**된다(k≥2 micro 0.7994→0.7864, k=1은 0.8822→0.8782로 −0.4pt에 그침). 즉 focal의 γ는 k≥2의 눌린 hard positive를 sharpening하는 이득이며, 그 크기가 γ의 순수 값이다.
 
-**부수 확인 — 열세는 lr 편향이 아니라 손실 기제다.** 09 손실 3런은 05_01 focal(eff_batch 8 · lr 3e-5)과 배치·lr이 함께 16배 차이나(3e-5×16 = 4.8e-4, linear scaling rule) 두 축이 겹친다. 그러나 (1) focal을 **동일 레시피**(eff128/lr4.8e-4)로 돌린 `08_02`가 2 epoch만에 val micro 0.835로 건강히 올라 배치 상향은 이 손실 계열에 무해하고, (2) BCE는 focal과 같은 계열이라 focal에 맞춰 탐색된 lr 4.8e-4가 그대로 최적인데 셋 중 최고 micro(0.8538)에 도달해 **레시피가 이 계열에 공정함**을 확인한다. 임계 무관 지표(ZLPR k≥2 R-Precision)와 operating-point 기반 09_04 분석은 모두 lr 스케일과 독립이라, 세 손실의 열세는 lr 선택 편향이 아니라 손실 기제로 귀속된다.
+**부수 확인 — 열세는 lr 편향이 아니라 손실 기제다.** 09 손실 3런은 05_01 focal(eff_batch 8 · lr 3e-5)과 배치·lr이 함께 16배 차이나(3e-5×16 = 4.8e-4, linear scaling rule) 두 축이 겹친다. 그러나 (1) focal을 **동일 레시피**(eff128/lr4.8e-4)로 돌린 12 epoch full 런 `11_01`이 test micro 0.8588로 exp2 focal(eff8/lr3e-5, 0.8601)과 잡음 내에서 같고 세 손실 후보를 모두 앞서(§실측 표), 배치·lr 상향은 focal micro에 중립이며 레시피가 이 계열에 공정함을 직접 실측으로 확인하고, (2) BCE는 focal과 같은 계열이라 focal에 맞춰 탐색된 lr 4.8e-4가 그대로 최적인데 셋 중 최고 micro(0.8538)에 도달해 이를 재확인한다. 임계 무관 지표(ZLPR k≥2 R-Precision)와 operating-point 기반 09_04 분석은 모두 lr 스케일과 독립이라, 세 손실의 열세는 lr 선택 편향이 아니라 손실 기제로 귀속된다.
 
 ### DL2 — 미착수 (ADR-0009)
 
