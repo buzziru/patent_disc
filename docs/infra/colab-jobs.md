@@ -116,6 +116,37 @@ KoBERT 9.6h 런을 헤드리스 `colab exec`로 **2회** 시도 → 둘 다 **~2
 - ⚠️ 즉 **버전을 pin하지 않으면 어느 regime인지 모른 채 장시간 런을 태우게 된다.**
 - 부수 확인: `classifier_pooling: "mean"`은 5.x에서 **masked mean**(attention_mask로 나눔)이라 패딩이 pooling을 오염시키지 않는다. `reference_compile`은 5.x에서 **제거된 dead key** → torch.compile 재컴파일 이슈 없음.
 
+## 추론 전용 실행 (로짓 재덤프)
+
+훈련된 모델을 Hub에서 불러 로짓만 다시 덤프하는 경로(예: 순열 로짓 재생성). `src/patent_train`을 그대로 재사용하되 `TrainConfig.for_inference`로 훈련 부속(wandb·early stop·save·train_dataset)을 끈다. 예시 노트북 `notebook/11_03_Redump_Logits.ipynb`는 **Colab 웹에서 직접 실행**하는 형태다(colab-cli 헤드리스 아님).
+
+- **코드 반입 = Drive 마운트 + `copytree`**: VM에 코드를 매번 업로드하면 느리다. `patent_train`을 Drive `MyDrive/patent_disc/src/patent_train`에 올려두고 `drive.mount`한 뒤, **Drive에서 로컬 `/content/src`로 `shutil.copytree`(`__pycache__` 제외)** 하고 `sys.path.insert(0, "/content/src")`로 그 사본을 import한다 — Drive 직접 import는 매 파일 접근이 네트워크라 느리다. `print(patent_train.__file__)`이 `/content/src/...`인지 확인한다.
+- **버전 pin**: `transformers`를 로컬 `.venv`·훈련 이미지와 같은 값으로 고정한다(`5.13.0`) — ModernBERT+FA2 regime이 버전에 따라 뒤집히고(위 「ModernBERT + FA2」), 추론 regime이 훈련과 달라지면 안 된다. flash-attn 프리빌트 휠도 함께 설치.
+- **시크릿 = `userdata`**: 웹 실행이라 헤드리스 `userdata` 제약이 없다(09_00과 동일). `HF_TOKEN`을 `userdata.get("HUGGINGFACEHUB_API_TOKEN")`으로 주입.
+- **모델·데이터셋 = Hub 다운로드**: 팟이 꺼져 있으면 로컬 체크포인트가 없다. `checkpoint`에 push된 repo id를 주면 `build_model`이 그 소스에서 헤드까지 복원한다(Hub id·로컬 디렉터리 동일 해석). Colab의 `HF_HOME`은 휘발이라 매 VM 새로 받는다.
+- **산출물 = Drive 저장**(09_00과 동일): `predict_logits(..., out_dir="{DRIVE}/output")`로 로짓을 Drive에 직접 쓴다. 다운로드는 사용자가 Drive에서 한다.
+- **split 한정**: `splits=("val","test")`로 train(201k행) 로드를 피한다. 추론 경로는 on-disk prep 캐시를 우회한다(휘발 VM에서 이득 없고, 부분 캐시가 훗날 전체 런에 재사용되는 사고를 원천 차단).
+- **행 순서 가드**: `predict_logits`가 덤프 동안 `train_sampling_strategy`를 `"sequential"`로 되돌리고(→ `_get_eval_sampler`가 `SequentialSampler`), 반환 라벨을 데이터셋 라벨과 대조하는 assert를 건다. 함께 나온 predict 지표(`runner.metrics[split]`)의 micro를 훈련 SSOT와 대조해 **모델을 제대로 불렀는지** 확인한다.
+
+```python
+from google.colab import drive, userdata; drive.mount("/content/drive")
+DRIVE = "/content/drive/MyDrive/patent_disc"
+shutil.copytree(f"{DRIVE}/src/patent_train", "/content/src/patent_train",
+                dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__"))
+sys.path.insert(0, "/content/src")
+os.environ["HF_TOKEN"] = userdata.get("HUGGINGFACEHUB_API_TOKEN")
+
+cfg = TrainConfig.for_inference(
+    tag="modernbert-patent-len512-b128", checkpoint="ingyoun/A.X-patent-len512-b128",
+    out_path="/content/output/redump", workspace="/content",
+    max_len=512, eval_micro_batch=512, splits=("val", "test"))
+runner = TrainingRunner(cfg)
+runner.load_data(); runner.prepare_data(); runner.load_model()   # 단계별(11_01과 동일) — setup() 축약 대신
+runner.build_trainer()
+runner.predict_logits("val", out_dir=f"{DRIVE}/output")        # → Drive/output/logits_{tag}_{split}.npy
+runner.predict_logits("test", out_dir=f"{DRIVE}/output")
+```
+
 ## Safety·복구
 
 - ⚠️ **작업 끝나면 항상 `colab stop -s <name>`** — idle VM은 컴퓨트를 소모. `colab run`(--keep 없이)은 self-clean.

@@ -20,7 +20,7 @@
 | 데이터·산출물 | 토큰화 데이터셋·체크포인트·HF 캐시 | `/workspace` 볼륨 | 크고, AI Hub 재배포 제약. 이미지에 넣으면 pull이 느려짐 |
 
 - **데이터는 이미지에 절대 넣지 않는다** — 팟 안에서 HF Hub streaming으로 받는다(`ingyoun/patent-clean-text-modernbert-tokenized`, 설계: [`data-pipeline.md`](../data/data-pipeline.md)). AI Hub 71531은 재배포 제약이 있어 public 이미지에 섞이면 안 된다.
-- **HF/모델 캐시는 `/workspace` 볼륨**으로 유도(`HF_HOME=/workspace/.hf_cache`, 이미지 ENV에 고정). 컨테이너 디스크(`/`·`/app`·`/root`)는 Stop 시 소실되지만 볼륨은 남아 재다운로드가 없다.
+- **HF/모델 캐시는 `/workspace` 볼륨**으로 유도(`HF_HOME=/workspace/hf_cache`, 이미지 ENV에 고정). 컨테이너 디스크(`/`·`/app`·`/root`)는 Stop 시 소실되지만 볼륨은 남아 재다운로드가 없다.
 
 ## 이미지 (`Dockerfile`) — 환경 SSOT = `uv.lock`
 
@@ -68,6 +68,7 @@
    ```
    - ⚠️ `flash_attn`은 **로컬(비-linux)에서 설치되지 않으므로** import 검증이 불가하다. `attn_implementation="flash_attention_2"` 경로는 **팟에서만** 확인된다(접속 직후 `python -c "import flash_attn"`).
 3. **TrainingArguments 인자 유효성**(transformers 5.x는 API가 바뀐 항목이 있다 — 예: `group_by_length`(bool)가 `train_sampling_strategy="group_by_length"`로 변경). 로컬 `.venv`의 실제 transformers로 대조한다.
+4. **eval 샘플러 분기**(로짓 행 순서 회귀 방지): 더미 `datasets.Dataset`으로 `Trainer._get_eval_sampler`가 `train_sampling_strategy="group_by_length"`에선 `LengthGroupedSampler`, `"sequential"`에선 `SequentialSampler`를 반환하는지 assert한다. 이 설정은 **train뿐 아니라 eval·predict 로더에도 적용**되어, `group_by_length`인 채 로짓을 덤프하면 행이 길이 그룹 순열로 나온다(지표는 멀쩡, 로짓만 어긋남 — 복원 불가). `predict_logits`가 덤프 동안 `"sequential"`로 되돌리고 반환 라벨로 행 순서를 assert하는 것이 방어선이다.
 
 ## 팟 생성·접속 (`runpodctl`)
 
@@ -87,7 +88,7 @@ docker push  <DOCKERHUB_USER>/patent-disc:$sha
 | GPU | RTX 4090(24GB) 1장 또는 L4 | 188-way 인코더 파인튜닝에 24GB면 충분(len8192는 여유 확인 필요) |
 | Container Image | `<DOCKERHUB_USER>/patent-disc:<sha>` | |
 | **CUDA Version 필터** | **≥ 12.8** | 이미지가 cu12.8을 요구 — 호스트 드라이버가 낮으면 `OCI runtime create failed`로 컨테이너가 아예 안 뜬다 |
-| Volume Disk / Mount | 20GB+ / `/workspace` | 이미지 ENV `HF_HOME=/workspace/.hf_cache`와 **일치해야** 캐시가 볼륨에 남는다 |
+| Volume Disk / Mount | 20GB+ / `/workspace` | 이미지 ENV `HF_HOME=/workspace/hf_cache`와 **일치해야** 캐시가 볼륨에 남는다 |
 | Container Disk | 20GB+ | devel 베이스 압축 해제분 + 여유 |
 | Environment Variables | `HF_TOKEN`, `WANDB_API_KEY` | 이미지에 넣지 않고 팟에서 주입. `WANDB_PROJECT`는 이미지 ENV에 이미 박힘 |
 
@@ -95,14 +96,41 @@ docker push  <DOCKERHUB_USER>/patent-disc:$sha
 ```bash
 nvidia-smi
 /opt/venv/bin/python -c "import torch, flash_attn; print(torch.__version__, torch.cuda.get_device_name(0))"
-echo $HF_HOME        # /workspace/.hf_cache 여야 함
+echo $HF_HOME        # /workspace/hf_cache 여야 함
 df -h /workspace
 ```
 - `torch.cuda.is_available()`가 False면 CUDA 필터 문제 — 팟을 지우고 필터를 올려 재생성.
 
 ## 노트북 실행
 
-훈련 노트북(`notebook/08_01_ModernBERT_Recipe.ipynb` 등)은 이미지 밖에 있으므로 접속 후 반입한다(git clone 또는 SCP/`runpodctl send`). 실행은 **`/opt/venv` 커널**로:
+훈련 코드는 `src/patent_train` 패키지에 있고(config·data·model·losses·metrics·trainer·runner·probe, ADR-0011 코드 성숙 전환), 노트북은 이를 임포트해 config 하나로 실행한다 — 손실/모델/레시피 변형은 `TrainConfig` 필드만 바꾸면 되고 코드는 불변이다:
+
+```python
+import sys; sys.path.insert(0, "src")            # /workspace/src (또는 uv pip install -e . 로 최상위 설치)
+from patent_train import TrainingRunner, TrainConfig, probe_batches
+
+cfg = TrainConfig(backbone="axenc",                          # backbones.BACKBONES 키(인코더+데이터셋)
+                  loss="focal", loss_params={"alpha": 0.25, "gamma": 2}, max_len=512,
+                  learning_rate=4.8e-4, weight_decay=0.01, warmup_ratio=0.1, early_stop_epochs=2,
+                  eff_batch=128, micro_batch=128, eval_micro_batch=512,   # 최적화 레시피는 노트북에서 명시
+                  tag="modernbert-patent-len512", repo_final="ingyoun/A.X-patent-len512",
+                  out_path="/workspace/output/modernbert-len512", search=True)  # fast-fail
+runner = TrainingRunner(cfg)
+runner.load_data()        # 토크나이저 + 원본 데이터셋(prep 캐시 있으면 원본 다운로드 생략)
+runner.prepare_data()     # max_len 절단 → prep 캐시
+runner.load_model()       # (= 위 셋을 잇는 축약: runner.setup())
+probe_batches(runner.model, runner.data.tokenizer.vocab_size, cfg.max_len)   # 선택: micro_batch OOM 탐침
+runner.build_trainer()
+runner.train()                    # 훈련만
+print(runner.evaluate("test"))    # 평가만 — 메트릭 dict 반환(출력은 호출부)
+runner.save_metrics()             # runner.metrics(split 전체) → {tag}_metrics.json
+runner.push_to_hub()              # 가중치는 Hub로만. 로컬 사본이 필요할 때만 runner.save_model()
+runner.predict_logits("test")     # logits_{tag}_test.npy 덤프 → error_analysis 인계
+```
+
+`TrainConfig`의 시간 축은 모두 **에폭 단위**다 — `epochs`·`evals_per_epoch`(에폭당 eval·save 횟수)·`early_stop_epochs`(개선 없이 견디는 에폭 수). step 수와 `EarlyStoppingCallback`의 eval 단위 patience 환산은 `runner.build_trainer`가 하고, 환산 결과를 `[schedule]` 한 줄로 출력한다. `epochs`는 풀런(`search=False`)에서 필수 입력이고, 짧은 탐색 런(`search=True`)에서만 2로 유도된다. bf16은 레시피가 아니라 백본 제약이라 `Backbone` 스펙에 있다(flash-attention-2 필수 조건).
+
+패키지(및 실행 노트북)는 이미지 밖에 있으므로 접속 후 반입한다(git clone 또는 SCP/`runpodctl send`). 실행은 **`/opt/venv` 커널**로:
 
 - Jupyter: 커널에서 `patent_disc (/opt/venv)` 선택.
 - 커맨드라인: `cd /app && uv run --no-sync jupyter …`(`--no-sync`로 lock 재해석 없이 `/opt/venv` 사용) 또는 `/opt/venv/bin/python`.
@@ -130,6 +158,7 @@ df -h /workspace
 | `import flash_attn` 실패(팟) | `--group gpu` 미설치 또는 torch/CUDA 메이저 불일치 | Dockerfile의 `uv sync … --group gpu` 확인. torch=cu128 / 휠=cu12 / 팟 CUDA≥12.8 |
 | `OCI runtime create failed` / `cuda.is_available()`=False | 호스트 CUDA 드라이버 < 이미지 요구 | 팟 삭제 후 CUDA Version 필터 ≥12.8로 재생성 |
 | `TypeError: unexpected keyword` (TrainingArguments) | transformers 5.x API 변경 | 로컬 `.venv`의 실제 버전으로 인자명 대조(예: `train_sampling_strategy`) |
+| 지표는 정상인데 덤프 로짓 기반 오류 분석이 전부 0 근처 | `train_sampling_strategy="group_by_length"`가 eval·predict 로더에도 적용되어 반환 행이 길이 그룹 순열 | 사후 복원 불가 — `predict_logits`(순차 샘플러 복귀 + 행 순서 assert)로 재덤프. 훈련은 불필요하고 Hub 모델로 추론만 다시 돌린다 |
 | 재시작 후 HF 모델 재다운로드 | `HF_HOME`이 볼륨 밖 | Volume Mount가 `/workspace`, `echo $HF_HOME`이 그 아래인지 |
 | 체크포인트 소실 | `output_dir`이 컨테이너 디스크 | `/workspace` 아래로 |
 | wandb 미기록 | 팟 env 미주입 | `env \| grep WANDB` |
