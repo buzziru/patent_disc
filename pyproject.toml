@@ -23,9 +23,9 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# src/ 를 소스 루트로 노출 — error_analysis.py 를 최상위 모듈(`import error_analysis`)로 설치.
+# src/ 를 소스 루트로 노출 — error_analysis.py(최상위 모듈)·patent_train(패키지)을 설치.
 [tool.hatch.build.targets.wheel]
-only-include = ["src/error_analysis.py"]
+only-include = ["src/error_analysis.py", "src/patent_train"]
 sources = ["src"]
 
 [dependency-groups]

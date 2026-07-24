@@ -12,6 +12,9 @@
 - 교차 모델         : `compare`·`hard_core_mask`·`hierarchy_verdict`.
 - `ErrorAnalysis`   : 위 요소를 묶은 파사드. 노트북은 이 클래스 하나만 import해
                       `from_labels → set_data → add` 로 로드·분석하고 메서드로 교차 모델을 낸다.
+
+τ 규약·`sigmoid`·F1 3종·`empty_rate`는 훈련 하니스의 `patent_train.metrics`에서 가져온다 —
+훈련 중 모델 선택 지표와 여기의 분석 지표가 같은 정의를 보게 하려는 것이다.
 """
 
 from dataclasses import dataclass, field
@@ -20,15 +23,12 @@ from pathlib import Path
 import numpy as np
 from sklearn.metrics import f1_score
 
+from patent_train.metrics import DEFAULT_TAU, empty_rate, f1_triple, sigmoid
+
 DEFAULT_BINS = ["<=512", "512-1024", "1024-2048", ">2048"]
-DEFAULT_TAU = 0.5
 
 
 # ── 로짓·라벨 로딩 ─────────────────────────────────────────────────────────
-
-def sigmoid(z: np.ndarray) -> np.ndarray:
-    return 1.0 / (1.0 + np.exp(-z))
-
 
 def load_logits(cache_dir: Path, tag: str, split: str) -> np.ndarray:
     """`logits_{tag}_{split}.npy` 로짓 캐시를 읽는다(없으면 FileNotFoundError)."""
@@ -189,7 +189,7 @@ def multilabel_stats(axes: EvalAxes, m: ModelResult) -> dict:
     fp_sib, fn_sib = FP & gold_col, FN & pred_col
     return {
         "tau": tau,
-        "empty_rate": round(float((pred.sum(1) == 0).mean()), 6),
+        "empty_rate": round(empty_rate(pred), 6),
         "fp": int(FP.sum()),
         "fp_sibling": int(fp_sib.sum()),
         "fp_sibling_ratio": round(float(fp_sib.sum() / FP.sum()), 4),
@@ -218,9 +218,7 @@ def lno_stats(axes: EvalAxes, m: ModelResult) -> dict:
     two_stage = lno_p1 * oracle_p1
 
     return {
-        "micro_f1": round(float(f1_score(YL, predL, average="micro", zero_division=0)), 4),
-        "macro_f1": round(float(f1_score(YL, predL, average="macro", zero_division=0)), 4),
-        "sample_f1": round(float(f1_score(YL, predL, average="samples", zero_division=0)), 4),
+        **{k: round(v, 4) for k, v in f1_triple(YL, predL).items()},   # Lno 축 F1 3종
         "p@1": round(lno_p1, 4),
         "oracle_lno_p@1": round(oracle_p1, 4),
         "two_stage_p@1_est": round(two_stage, 4),
@@ -343,6 +341,16 @@ def pair_stats(axes: EvalAxes, m: ModelResult) -> dict:
     }
 
 
+def per_class_f1(axes: EvalAxes, m: ModelResult) -> dict:
+    """중분류(Mno)별 F1·support — 두 모델을 클래스 단위로 paired 대조할 때 쓴다."""
+    ls, Y, tau = axes.ls, axes.Y, axes.tau
+    pred = m.P >= tau
+    f1 = f1_score(Y, pred, average=None, zero_division=0)
+    support = Y.sum(0)
+    return {ls.mno_of_col[c]: {"f1": round(float(f1[c]), 4), "support": int(support[c])}
+            for c in range(ls.C)}
+
+
 def length_bin_stats(axes: EvalAxes, m: ModelResult) -> dict:
     """길이 bin × 오류 유형 — cross-Lno(표현력)인지 FN(임계값)인지 가른다."""
     P, Y, tau = m.P, axes.Y, axes.tau
@@ -374,6 +382,7 @@ TECHNIQUES = {
     "lno_confusion": lno_confusion_record,
     "label_count_bins": count_bin_stats,
     "cardinality": cardinality_stats,
+    "per_class_f1": per_class_f1,
     "pair_analysis": pair_stats,
     "length_bin_error": length_bin_stats,
 }
@@ -460,6 +469,7 @@ class ErrorAnalysis:
         EA = ErrorAnalysis(label_mapping, num_labels=188, tau=0.5)   # 라벨 공간 구성
         EA.set_data(ds)                                              # 정답·길이·카디널리티 축
         EA.add(MODELS, cache_dir, split)                            # 로짓 로드→빌드→기법 분석
+        EA.add_logits(tag, logits)                                  # 가공한 로짓 배열을 직접 등록
         EA.records[tag] / EA.models[tag]                            # 표·저장용 결과
         EA.compare(base, target) · EA.hard_core() · EA.hierarchy_verdict(tag) · EA.pair_symmetry(tag)
     """
@@ -500,12 +510,16 @@ class ErrorAnalysis:
     def add(self, models, cache_dir, split, techniques: dict = TECHNIQUES) -> "ErrorAnalysis":
         """모델 목록의 로짓을 읽어 `ModelResult` 빌드 + 기법 레지스트리 분석까지 수행."""
         for d in models:
-            tag = d["tag"]
-            logits = load_logits(cache_dir, tag, split)
-            assert logits.shape == (self.n, self.num_labels), tag
-            m = ModelResult.build(self.axes, tag, logits)
-            self.models[tag] = m
-            self.records[tag] = analyze_model(self.axes, m, techniques)
+            self.add_logits(d["tag"], load_logits(cache_dir, d["tag"], split), techniques)
+        return self
+
+    def add_logits(self, tag: str, logits: np.ndarray, techniques: dict = TECHNIQUES) -> "ErrorAnalysis":
+        """로짓 배열을 직접 등록해 분석한다 — 캐시 파일 그대로가 아니라 가공한 로짓
+        (예: 다른 test 판의 로짓을 공통 문서 행으로 정렬한 것)을 넣는 경로."""
+        assert logits.shape == (self.n, self.num_labels), tag
+        m = ModelResult.build(self.axes, tag, logits)
+        self.models[tag] = m
+        self.records[tag] = analyze_model(self.axes, m, techniques)
         return self
 
     def compare(self, base_tag: str, target_tag: str, component: str = "loss") -> dict:
