@@ -38,4 +38,4 @@ TAPT 코퍼스가 분류 train split과 **같은 문서 집합**이고, 노출�
 
 백본 표현 품질 갈래가 닫혔다. 되열 조건은 epoch 수나 체크포인트가 아니라 **코퍼스**다 — train split 밖의 외부 특허 문헌이라야 파인튜닝이 보지 못하는 정보가 생긴다. 실패한 것은 계속학습이라는 원리가 아니라 라벨 코퍼스와 같은 코퍼스로 계속학습한 설정이다.
 
-남은 헤드룸은 측정된 병목을 직접 겨냥하는 축들이다 — cross-`Lno` 오류를 훈련 신호로 삼는 계층 손실(`../experiments/hierarchy-loss.md`)과 k≥2 카디널리티를 겨냥하는 KD(`../experiments/knowledge-distillation.md`). 부수적으로 `13_02`에서 훈련 경로 Trainer의 `predict_logits`가 다시 행 순열 로짓을 냈다(`11_01`에 이은 두 번째) — 로짓 덤프는 추론 전용 경로에서 하고 SSOT 대조로 즉시 검증한다는 절차가 `domain-pretraining.md`「함정」에 기록됐다.
+남은 헤드룸은 측정된 병목을 직접 겨냥하는 축들이다 — cross-`Lno` 오류를 훈련 신호로 삼는 계층 손실(`../experiments/hierarchy-loss.md`)과 k≥2 카디널리티를 겨냥하는 KD(`../experiments/knowledge-distillation.md`). 부수적으로 `13_02`의 로짓 덤프가 행 순열로 나와 폐기됐다 — 팟의 `src/patent_train`이 구 사본이라 로컬에 이미 있던 행 순서 방어가 반영되지 않은 채 돈 것으로, 외부 잡의 코드 반입을 확인하는 절차가 `domain-pretraining.md`「함정」에 기록됐다.

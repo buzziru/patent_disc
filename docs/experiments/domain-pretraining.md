@@ -140,7 +140,7 @@ val micro-F1을 eval 지점(788 step, 에폭당 2회)마다 짝지은 델타(TAP
 - 앵커 로짓과의 행별 코사인이 self **0.051** vs 최적 매칭 **0.800**이다. 정렬이 맞는 두 런(exp2 vs `11_01`)에서는 self 0.630 ≈ 최적 0.653으로, 참 짝이 곧 최적 짝이다.
 - 클래스축 순열 가설은 배제된다 — 헝가리안 최적 배정 뒤에도 micro 0.042에 그친다.
 
-런이 낸 지표(micro 0.8572)는 Trainer가 라벨을 같은 순서로 모아 계산하므로 **유효하다.** 어긋난 것은 덤프 파일뿐이며, 판정은 그 지표 위에 선다.
+원인은 팟의 `src/patent_train`이 구 사본이었던 것이다 — `predict_logits`의 행 순서 방어(덤프 동안 순차 샘플러 복원 + 반환 라벨 assert)가 로컬에는 이미 들어와 있었으나 팟에 반영되지 않았다. 런이 낸 지표(micro 0.8572)는 Trainer가 라벨을 같은 순서로 모아 계산하므로 **유효하다.** 어긋난 것은 덤프 파일뿐이며, 판정은 그 지표 위에 선다.
 
 대가로 프로토콜이 요구한 **paired bootstrap CI**와 부수 관측인 **길이 bin별 slope**는 미집행으로 남는다. 점추정 −0.15pt가 +0.4pt로 바뀔 수 없어 판정 자체는 흔들리지 않는다. 로짓이 필요한 작업(오류 분석·KD teacher 편입)을 훗날 되살리려면 `11_03`과 같은 추론 전용 경로로 다시 덤프해야 한다 — `TrainConfig.for_inference(checkpoint="ingyoun/A.X-patent-len512-tapt")` → `predict_logits`. 모델 자체는 Hub에 남아 있다.
 
@@ -179,7 +179,7 @@ val micro-F1을 eval 지점(788 step, 에폭당 2회)마다 짝지은 델타(TAP
 - **`prep_cache` 키는 `{backbone}_len{max_len}`이라 `axenc_tapt_len512`가 새로 생긴다.** 토크나이저가 동일해 내용은 `axenc_len512`와 같지만 캐시는 공유되지 않는다 — 팟 볼륨을 재사용해도 원본 재다운로드·재map이 1회 발생한다(구 데이터로 학습될 위험은 없다).
 - **MLM eval 배치를 분류 감각으로 잡지 않는다.** 위 probe 표 참조 — vocab 로짓 크기가 다르다.
 - **`hub_strategy="all_checkpoints"`는 optimizer state까지 올린다.** 5 epoch 런이 9.6GB를 차지했다. 재개용으로는 유용하나, 축이 끝나면 체크포인트 디렉터리 정리를 고려한다.
-- **훈련 경로 Trainer로 `predict_logits`를 부르면 행 순열 위험이 남는다.** `train_sampling_strategy="group_by_length"`는 eval·predict 로더에도 적용되며, `predict_logits`가 덤프 동안 `sequential`로 되돌리는 방어와 행 순서 assert가 `13_02`에서 순열을 막지 못했다(`11_01`에서 한 번 발생해 `11_03`으로 재덤프한 것과 같은 실패 모드다). **로짓은 훈련이 끝난 뒤 추론 전용 경로(`TrainConfig.for_inference` → `_build_inference_trainer`)에서 별도 덤프한다.** 덤프 직후 SSOT micro와 대조하는 검증(`11_03` 마지막 셀)을 같은 노트북 안에서 돌려 순열을 그 자리에서 잡는다.
+- **팟의 `src/patent_train`을 로컬 최신본으로 교체하고 시작한다.** 볼륨·이미지에 남은 구 사본이 import되면 로컬에서 고친 코드가 반영되지 않은 채 런이 돈다 — `13_02`의 순열 로짓이 이 경로로 나왔다(`predict_logits`의 순차 샘플러 복원·행 순서 assert는 로컬에 이미 있었으나 팟 사본이 구본이었다). 런 초반에 `patent_train.__file__`을 찍어 반입 경로를 확인한다.
 
 ## 한계
 

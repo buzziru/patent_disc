@@ -105,6 +105,8 @@ df -h /workspace
 
 훈련 코드는 `src/patent_train` 패키지에 있고(config·data·model·losses·metrics·trainer·runner·probe, ADR-0011 코드 성숙 전환), 노트북은 이를 임포트해 config 하나로 실행한다 — 손실/모델/레시피 변형은 `TrainConfig` 필드만 바꾸면 되고 코드는 불변이다:
 
+> ⚠️ **런 시작 전에 팟의 `src/patent_train`을 로컬 최신본으로 교체한다.** 볼륨·이미지에 남은 구 사본이 그대로 import되면 로컬에서 고친 코드가 반영되지 않은 채 돈다 — `13_02`가 이 경로로 행 순열 로짓을 냈다(아래 「eval 샘플러 분기」 방어가 로컬에는 있었으나 팟 사본에 없었다). 임포트 직후 `patent_train.__file__`을 찍어 반입 경로를 확인한다.
+
 ```python
 import sys; sys.path.insert(0, "src")            # /workspace/src (또는 uv pip install -e . 로 최상위 설치)
 from patent_train import TrainingRunner, TrainConfig, probe_batches
@@ -158,7 +160,7 @@ runner.predict_logits("test")     # logits_{tag}_test.npy 덤프 → error_analy
 | `import flash_attn` 실패(팟) | `--group gpu` 미설치 또는 torch/CUDA 메이저 불일치 | Dockerfile의 `uv sync … --group gpu` 확인. torch=cu128 / 휠=cu12 / 팟 CUDA≥12.8 |
 | `OCI runtime create failed` / `cuda.is_available()`=False | 호스트 CUDA 드라이버 < 이미지 요구 | 팟 삭제 후 CUDA Version 필터 ≥12.8로 재생성 |
 | `TypeError: unexpected keyword` (TrainingArguments) | transformers 5.x API 변경 | 로컬 `.venv`의 실제 버전으로 인자명 대조(예: `train_sampling_strategy`) |
-| 지표는 정상인데 덤프 로짓 기반 오류 분석이 전부 0 근처 | `train_sampling_strategy="group_by_length"`가 eval·predict 로더에도 적용되어 반환 행이 길이 그룹 순열 | 사후 복원 불가 — `predict_logits`(순차 샘플러 복귀 + 행 순서 assert)로 재덤프. 훈련은 불필요하고 Hub 모델로 추론만 다시 돌린다 |
+| 지표는 정상인데 덤프 로짓 기반 오류 분석이 전부 0 근처 | `train_sampling_strategy="group_by_length"`가 eval·predict 로더에도 적용되어 반환 행이 길이 그룹 순열. 방어가 있는데도 재발했다면 팟 `src`가 구 사본이다(`patent_train.__file__` 확인) | 사후 복원 불가 — `src` 동기화 후 `predict_logits`(순차 샘플러 복귀 + 행 순서 assert)로 재덤프. 훈련은 불필요하고 Hub 모델로 추론만 다시 돌린다 |
 | 재시작 후 HF 모델 재다운로드 | `HF_HOME`이 볼륨 밖 | Volume Mount가 `/workspace`, `echo $HF_HOME`이 그 아래인지 |
 | 체크포인트 소실 | `output_dir`이 컨테이너 디스크 | `/workspace` 아래로 |
 | wandb 미기록 | 팟 env 미주입 | `env \| grep WANDB` |
