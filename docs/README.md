@@ -26,7 +26,7 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 
 ### 데이터 (`data/`)
 
-- `[data/data.md](./data/data.md)` — AI Hub 71531 레이아웃, JSON 스키마, 원천↔라벨 조인, 17대분류/188중분류, 다중레이블·분포·baseline 주의 + 다중레이블의 계층 형상(cross-`Lno` vs within-`Lno`, 계층 설계 제약 — `scripts/multilabel_shape.py`·`output/multilabel_shape.json`)
+- `[data/data.md](./data/data.md)` — AI Hub 71531 레이아웃, JSON 스키마, 원천↔라벨 조인, 17대분류/188중분류, 다중레이블·분포·baseline 주의 + 다중레이블의 계층 형상(cross-`Lno` vs within-`Lno`, 계층 설계 제약 — `scripts/multilabel_shape.py`·`output/multilabel_shape.json`) + IPC 필드 관계(`ipc_main`은 `ipc_all`의 첫 코드 · 보조 코드의 잔여 신호는 잡음 수준이며 부호가 다중레이블 반대 — `scripts/ipc_field_analysis.py`·`output/ipc_field_analysis.json`)
 - `[data/data-pipeline.md](./data/data-pipeline.md)` — 2계층 파이프라인: zip 스트리밍 파싱 → 정제 텍스트 HF Hub push → 소비 시 토큰화
 
 ### 실험·기록 (`experiments/`)
