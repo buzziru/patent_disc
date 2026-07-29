@@ -1,0 +1,354 @@
+{
+  "raw_ds": "ingyoun/patent-clean-text",
+  "num_labels": 188,
+  "splits": [
+    "train",
+    "val",
+    "test"
+  ],
+  "shape": {
+    "train": {
+      "n_docs": 201616,
+      "n_positive_labels": 242856,
+      "multi_rate": 0.15261189588127927,
+      "n_multi": 30769,
+      "k_dist": {
+        "1": 170847,
+        "2": 23423,
+        "3": 5260,
+        "4": 1358,
+        "5": 488,
+        "6": 186,
+        "7": 40,
+        "8": 12,
+        "9": 1,
+        "10": 1
+      },
+      "multi_n_lno_dist": {
+        "1": 12710,
+        "2": 16116,
+        "3": 1667,
+        "4": 247,
+        "5": 28,
+        "6": 1
+      },
+      "multi_max_mno_per_lno_dist": {
+        "1": 14198,
+        "2": 13615,
+        "3": 2073,
+        "4": 650,
+        "5": 180,
+        "6": 45,
+        "7": 8
+      },
+      "pure_cross_lno": 14198,
+      "pure_within_lno": 12710,
+      "mixed": 3861,
+      "need_multi_mno_per_lno": 16571,
+      "need_multi_mno_share_of_multi": 0.538561539211544,
+      "need_multi_mno_share_of_all": 0.08219089754781367,
+      "recall_ceiling_one_mno_per_lno": 0.913809006160029
+    },
+    "val": {
+      "n_docs": 11132,
+      "n_positive_labels": 13424,
+      "multi_rate": 0.15298239310097017,
+      "n_multi": 1703,
+      "k_dist": {
+        "1": 9429,
+        "2": 1306,
+        "3": 271,
+        "4": 83,
+        "5": 26,
+        "6": 12,
+        "7": 4,
+        "8": 1
+      },
+      "multi_n_lno_dist": {
+        "1": 718,
+        "2": 872,
+        "3": 97,
+        "4": 14,
+        "5": 2
+      },
+      "multi_max_mno_per_lno_dist": {
+        "1": 772,
+        "2": 772,
+        "3": 110,
+        "4": 35,
+        "5": 10,
+        "6": 2,
+        "7": 2
+      },
+      "pure_cross_lno": 772,
+      "pure_within_lno": 718,
+      "mixed": 213,
+      "need_multi_mno_per_lno": 931,
+      "need_multi_mno_share_of_multi": 0.5466823253082795,
+      "need_multi_mno_share_of_all": 0.08363277039166367,
+      "recall_ceiling_one_mno_per_lno": 0.9123957091775924
+    },
+    "test": {
+      "n_docs": 11244,
+      "n_positive_labels": 13534,
+      "multi_rate": 0.15021344717182497,
+      "n_multi": 1689,
+      "k_dist": {
+        "1": 9555,
+        "2": 1275,
+        "3": 298,
+        "4": 67,
+        "5": 33,
+        "6": 12,
+        "7": 2,
+        "8": 2
+      },
+      "multi_n_lno_dist": {
+        "1": 703,
+        "2": 863,
+        "3": 106,
+        "4": 14,
+        "5": 3
+      },
+      "multi_max_mno_per_lno_dist": {
+        "1": 784,
+        "2": 741,
+        "3": 109,
+        "4": 39,
+        "5": 12,
+        "6": 1,
+        "7": 3
+      },
+      "pure_cross_lno": 784,
+      "pure_within_lno": 703,
+      "mixed": 202,
+      "need_multi_mno_per_lno": 905,
+      "need_multi_mno_share_of_multi": 0.5358200118413262,
+      "need_multi_mno_share_of_all": 0.0804873710423337,
+      "recall_ceiling_one_mno_per_lno": 0.9142160484705187
+    },
+    "ALL": {
+      "n_docs": 223992,
+      "n_positive_labels": 269814,
+      "multi_rate": 0.15250991106825243,
+      "n_multi": 34161,
+      "k_dist": {
+        "1": 189831,
+        "2": 26004,
+        "3": 5829,
+        "4": 1508,
+        "5": 547,
+        "6": 210,
+        "7": 46,
+        "8": 15,
+        "9": 1,
+        "10": 1
+      },
+      "multi_n_lno_dist": {
+        "1": 14131,
+        "2": 17851,
+        "3": 1870,
+        "4": 275,
+        "5": 33,
+        "6": 1
+      },
+      "multi_max_mno_per_lno_dist": {
+        "1": 15754,
+        "2": 15128,
+        "3": 2292,
+        "4": 724,
+        "5": 202,
+        "6": 48,
+        "7": 13
+      },
+      "pure_cross_lno": 15754,
+      "pure_within_lno": 14131,
+      "mixed": 4276,
+      "need_multi_mno_per_lno": 18407,
+      "need_multi_mno_share_of_multi": 0.5388308304792014,
+      "need_multi_mno_share_of_all": 0.08217704203721561,
+      "recall_ceiling_one_mno_per_lno": 0.9137591081263389
+    }
+  },
+  "cooccurrence": {
+    "n_doc_lno_pairs": 246545,
+    "mno_per_doc_lno_dist": {
+      "1": {
+        "n": 227882,
+        "share": 0.924302
+      },
+      "2": {
+        "n": 15381,
+        "share": 0.062386
+      },
+      "3": {
+        "n": 2295,
+        "share": 0.009309
+      },
+      "4": {
+        "n": 724,
+        "share": 0.002937
+      },
+      "5": {
+        "n": 202,
+        "share": 0.000819
+      },
+      "6": {
+        "n": 48,
+        "share": 0.000195
+      },
+      "7": {
+        "n": 13,
+        "share": 5.3e-05
+      }
+    },
+    "n_lno_pair_types": 132,
+    "n_sibling_pair_types": 803,
+    "top_lno_pairs": [
+      [
+        "EA+EE",
+        1583
+      ],
+      [
+        "EH+ND",
+        1573
+      ],
+      [
+        "EA+ND",
+        1337
+      ],
+      [
+        "EA+EI",
+        1133
+      ],
+      [
+        "LB+LC",
+        1007
+      ],
+      [
+        "LA+LB",
+        926
+      ],
+      [
+        "EH+EI",
+        838
+      ],
+      [
+        "EC+NC",
+        826
+      ],
+      [
+        "LA+NC",
+        774
+      ],
+      [
+        "EA+EH",
+        656
+      ]
+    ],
+    "top_sibling_pairs": [
+      [
+        "EH08+EH09",
+        875
+      ],
+      [
+        "EH12+EH15",
+        731
+      ],
+      [
+        "EH09+EH10",
+        668
+      ],
+      [
+        "EH08+EH10",
+        661
+      ],
+      [
+        "ND05+ND06",
+        620
+      ],
+      [
+        "ND04+ND05",
+        535
+      ],
+      [
+        "ND02+ND07",
+        514
+      ],
+      [
+        "EA12+EA13",
+        513
+      ],
+      [
+        "EG01+EG02",
+        490
+      ],
+      [
+        "EG05+EG06",
+        486
+      ]
+    ],
+    "sibling_top10_share": 0.2057,
+    "sibling_rate_by_lno": {
+      "EG": 0.3134,
+      "EH": 0.1612,
+      "ND": 0.16,
+      "OA": 0.1457,
+      "LA": 0.0953,
+      "LC": 0.0699,
+      "LB": 0.0681,
+      "NC": 0.0631,
+      "OB": 0.053,
+      "EA": 0.0442,
+      "EI": 0.0428,
+      "EF": 0.0334,
+      "EE": 0.0322,
+      "EC": 0.0316,
+      "ED": 0.0301,
+      "EB": 0.0271,
+      "NB": 0.0271
+    }
+  },
+  "recall_decomposition": {
+    "n_positive": 13534,
+    "n_sibling_accompanied": 2079,
+    "n_solo_lno": 11455,
+    "n_solo_in_multi": 1900,
+    "models": {
+      "exp1(8192)": {
+        "recall_all": 0.8696615930249741,
+        "recall_sibling_accompanied": 0.7715247715247715,
+        "recall_solo_lno": 0.8874727193365343,
+        "recall_solo_in_k1": 0.9267399267399268,
+        "recall_solo_in_multi": 0.69,
+        "fn_total": 1764,
+        "fn_sibling_accompanied": 475,
+        "fn_solo_in_multi": 589,
+        "fn_solo_in_k1": 700,
+        "induced_multi_lno_gate": {
+          "mean_lno_per_doc": 1.1090359302739239,
+          "column_share": 0.07510010066834699,
+          "recall_ceiling": 0.9238214866262746,
+          "lno_level_recall": 0.9182090034753091
+        }
+      },
+      "11_01(512)": {
+        "recall_all": 0.8638983301315206,
+        "recall_sibling_accompanied": 0.7638287638287639,
+        "recall_solo_lno": 0.8820602357049323,
+        "recall_solo_in_k1": 0.922239665096808,
+        "recall_solo_in_multi": 0.68,
+        "fn_total": 1842,
+        "fn_sibling_accompanied": 491,
+        "fn_solo_in_multi": 608,
+        "fn_solo_in_k1": 743,
+        "induced_multi_lno_gate": {
+          "mean_lno_per_doc": 1.1158840270366417,
+          "column_share": 0.07550362557430157,
+          "recall_ceiling": 0.9198315353923452,
+          "lno_level_recall": 0.914329588620383
+        }
+      }
+    }
+  }
+}
