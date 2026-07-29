@@ -1,0 +1,195 @@
+{
+  "note": "계층 손실(MCLoss) 그룹 항이 닿는 오류 질량과 micro 민감도. 음성 항 표적 = 정답 Lno 밖 FP, 양성 항 표적 = 그룹 전체를 놓친 FN. sensitivity_oracle은 표적 질량의 일부를 오라클로 제거·회수했을 때의 micro이므로 도달 불가 상한이지 목표치가 아니다. 평가 축 = 정리 test 11,244, tau=0.5.",
+  "n": 11244,
+  "split": "test",
+  "tau": 0.5,
+  "primary": "11_01(A.X 512)",
+  "script": "scripts/hierarchy_loss_mass.py",
+  "verify": "FP = cross + within · FN = missed + saturated · 재계산 micro == output/headline_cleaned_test.json (4/4)",
+  "models": {
+    "KoBERT(512)": {
+      "micro": 0.85,
+      "total": {
+        "tp": 11582,
+        "fp": 2136,
+        "fn": 1952,
+        "fp_cross_lno": 1285,
+        "fp_within_lno": 851,
+        "fn_group_missed": 1518,
+        "fn_group_saturated": 434
+      },
+      "slices": {
+        "k=1": {
+          "tp": 8699,
+          "fp": 1710,
+          "fn": 856,
+          "fp_cross_lno": 1105,
+          "fp_within_lno": 605,
+          "fn_group_missed": 856,
+          "fn_group_saturated": 0
+        },
+        "k>=2": {
+          "tp": 2883,
+          "fp": 426,
+          "fn": 1096,
+          "fp_cross_lno": 180,
+          "fp_within_lno": 246,
+          "fn_group_missed": 662,
+          "fn_group_saturated": 434
+        }
+      },
+      "sensitivity_oracle": {
+        "suppress_cross_lno_fp": {
+          "10%": 0.854,
+          "20%": 0.8581,
+          "30%": 0.8622,
+          "50%": 0.8705
+        },
+        "recover_group_missed_fn": {
+          "10%": 0.8563,
+          "20%": 0.8626,
+          "30%": 0.8689,
+          "50%": 0.8812
+        }
+      }
+    },
+    "exp2(A.X 512)": {
+      "micro": 0.8599,
+      "total": {
+        "tp": 11653,
+        "fp": 1915,
+        "fn": 1881,
+        "fp_cross_lno": 1155,
+        "fp_within_lno": 760,
+        "fn_group_missed": 1474,
+        "fn_group_saturated": 407
+      },
+      "slices": {
+        "k=1": {
+          "tp": 8759,
+          "fp": 1548,
+          "fn": 796,
+          "fp_cross_lno": 996,
+          "fp_within_lno": 552,
+          "fn_group_missed": 796,
+          "fn_group_saturated": 0
+        },
+        "k>=2": {
+          "tp": 2894,
+          "fp": 367,
+          "fn": 1085,
+          "fp_cross_lno": 159,
+          "fp_within_lno": 208,
+          "fn_group_missed": 678,
+          "fn_group_saturated": 407
+        }
+      },
+      "sensitivity_oracle": {
+        "suppress_cross_lno_fp": {
+          "10%": 0.8636,
+          "20%": 0.8673,
+          "30%": 0.8711,
+          "50%": 0.8786
+        },
+        "recover_group_missed_fn": {
+          "10%": 0.8661,
+          "20%": 0.8722,
+          "30%": 0.8782,
+          "50%": 0.8901
+        }
+      }
+    },
+    "exp1(A.X 8192)": {
+      "micro": 0.8683,
+      "total": {
+        "tp": 11770,
+        "fp": 1806,
+        "fn": 1764,
+        "fp_cross_lno": 1084,
+        "fp_within_lno": 722,
+        "fn_group_missed": 1350,
+        "fn_group_saturated": 414
+      },
+      "slices": {
+        "k=1": {
+          "tp": 8855,
+          "fp": 1456,
+          "fn": 700,
+          "fp_cross_lno": 940,
+          "fp_within_lno": 516,
+          "fn_group_missed": 700,
+          "fn_group_saturated": 0
+        },
+        "k>=2": {
+          "tp": 2915,
+          "fp": 350,
+          "fn": 1064,
+          "fp_cross_lno": 144,
+          "fp_within_lno": 206,
+          "fn_group_missed": 650,
+          "fn_group_saturated": 414
+        }
+      },
+      "sensitivity_oracle": {
+        "suppress_cross_lno_fp": {
+          "10%": 0.8718,
+          "20%": 0.8753,
+          "30%": 0.8789,
+          "50%": 0.886
+        },
+        "recover_group_missed_fn": {
+          "10%": 0.8739,
+          "20%": 0.8795,
+          "30%": 0.885,
+          "50%": 0.8958
+        }
+      }
+    },
+    "11_01(A.X 512)": {
+      "micro": 0.8588,
+      "total": {
+        "tp": 11692,
+        "fp": 2004,
+        "fn": 1842,
+        "fp_cross_lno": 1211,
+        "fp_within_lno": 793,
+        "fn_group_missed": 1436,
+        "fn_group_saturated": 406
+      },
+      "slices": {
+        "k=1": {
+          "tp": 8812,
+          "fp": 1628,
+          "fn": 743,
+          "fp_cross_lno": 1044,
+          "fp_within_lno": 584,
+          "fn_group_missed": 743,
+          "fn_group_saturated": 0
+        },
+        "k>=2": {
+          "tp": 2880,
+          "fp": 376,
+          "fn": 1099,
+          "fp_cross_lno": 167,
+          "fp_within_lno": 209,
+          "fn_group_missed": 693,
+          "fn_group_saturated": 406
+        }
+      },
+      "sensitivity_oracle": {
+        "suppress_cross_lno_fp": {
+          "10%": 0.8626,
+          "20%": 0.8665,
+          "30%": 0.8704,
+          "50%": 0.8783
+        },
+        "recover_group_missed_fn": {
+          "10%": 0.8647,
+          "20%": 0.8707,
+          "30%": 0.8765,
+          "50%": 0.8881
+        }
+      }
+    }
+  }
+}
