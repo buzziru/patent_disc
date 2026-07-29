@@ -118,6 +118,20 @@ KoBERT 대비 문서별 차이(`kobert_len − A.X length`, 양수 = A.X가 짧�
 - **꼬리에는 역전이 있다**: diff min −1,463 — 일부 문서는 A.X가 오히려 최대 ~1,463토큰 더 길다(숫자·기호·코드 밀집 문서로 추정). "평균적으로 짧다"이지 "항상 짧다"가 아니다.
 - **시퀀스 길이 계획(A.X 토큰 기준)**: p95 ~1,800, p99 ~3,700 → `max_length` 후보 1,024(≈p75) / 2,048(≈p95) / 4,096(≈p99). 4,096으로 ~99% 무손실. (아래 길이 슬라이스 bin은 **비교 축 고정을 위해 여전히 `kobert_len` 기준**임에 유의.)
 
+#### 총 토큰 수 · 정제 전후 문서 수 (A.X-Encoder 토크나이저)
+
+현재 Hub 데이터셋(`ingyoun/patent-clean-text-modernbert-tokenized`)은 **정제 후** 상태다. 총 토큰은 저장된 `input_ids`의 parquet footer `num_values` 합으로 실측한다(truncation 없음, `<s>`/`</s>` 포함).
+
+| split | 정제 전 문서 | 정제 후 문서 | Δ문서 | 정제 후 총 토큰 | 평균/문서 |
+| ----- | --------: | --------: | ---: | ----------: | -----: |
+| train | 201,895   | 201,616   | −279 | 160,388,554 | 795.5  |
+| val   | 11,162    | 11,132    | −30  | 8,852,563   | 795.2  |
+| test  | 11,271    | 11,244    | −27  | 9,046,166   | 804.5  |
+| 합    | 224,328   | 223,992   | −336 | 178,287,283 | 796.0  |
+
+- 문서 −336은 「입력 동일 케이스(제거 완료, 총 336문서)」의 제거분이다(train −279 / val −30 / test −27). 위 길이 분포 표(mean·percentile)는 **정제 전** 문서 수 기준이며, 그 train mean 795.4가 정제 후 실측 평균 795.5와 사실상 일치해 제거가 길이 분포를 흔들지 않았음을 재확인한다.
+- **train 총 160.4M 토큰**이 TAPT MLM 예산의 기준값이다(`../../NEXT_SESSION.md` 도메인 사전학습 축 — test는 누수 방지로 MLM 제외).
+
 ### 입력 토큰 길이 분포 (KLUE-RoBERTa 토크나이저)
 
 `notebook/07_01_Prep_RoBERTa.ipynb` 실측. 동일 필드 조합(`invention_title + ipc_main + abstract + claims`, 빈 필드 skip)을 `klue/roberta-large`(vocab 32,000, revision `28d91120`)로 **truncation 없이** 인코딩. 결과는 `ingyoun/patent-clean-text-roberta-tokenized`로 push(분석용 `length`/`diff`와 전부 0인 `token_type_ids`는 제외).

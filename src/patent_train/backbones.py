@@ -33,6 +33,12 @@ BACKBONES = {
         rev="9708f9c404ace91efd25c06fac2d73413616f4ef",
         dataset_id="ingyoun/patent-clean-text-modernbert-tokenized",
     ),
+    "axenc_tapt": Backbone(
+        key="axenc_tapt",
+        model_name="ingyoun/A.X-patent-tapt-mlm",
+        rev="62818c2595513a03f834c39a329c375153bc2661",
+        dataset_id="ingyoun/patent-clean-text-modernbert-tokenized",
+    ),
 }
 
 
