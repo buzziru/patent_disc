@@ -47,6 +47,7 @@ MODELS = {
     "ZLPR": "modernbert-patent-len512-zlpr",
     "ASL": "modernbert-patent-len512-asl",
     "11_01(b128)": "modernbert-patent-len512-b128",
+    "11_04(seed153)": "modernbert-patent-seed153",
 }
 
 # 델타 = A − B. 문서에 이미 쓰여 있는 주장들.
@@ -57,6 +58,10 @@ PAIRS = [
     ("11_01(b128)", "BCE", "손실: focal vs BCE (동일 레시피)"),
     ("11_01(b128)", "ZLPR", "손실: focal vs ZLPR (동일 레시피)"),
     ("11_01(b128)", "ASL", "손실: focal vs ASL (동일 레시피)"),
+    # 시드 축 — 설정이 같고 시드만 다른 쌍이라 델타의 기댓값이 0이다. 구간이 0을 포함해야 정상이며,
+    # 그 폭이 '표본 잡음만으로 시드 델타가 얼마나 흔들리는가'다.
+    ("11_04(seed153)", "11_01(b128)", "시드 쌍 — 훈련 잡음 (seed 153 − 42, 기댓값 0)"),
+    ("11_04(seed153)", "BCE", "손실: focal vs BCE — 두 번째 시드(재판정)"),
 ]
 
 

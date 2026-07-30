@@ -111,7 +111,7 @@ loss_func.md 초안은 임계값 민감도 기준(ZLPR ≳ DL2 > ASL)과 서사�
 | ZLPR (`09_01`) | 0.8493 | 0.8462 | 0.8662 | 0.96% | 0.8122 |
 | ASL (`09_02`) | 0.8362 | 0.8366 | 0.8646 | 0.43% | 0.8148 |
 
-- **focal이 네 손실 중 micro 최고다** — BCE +0.50pt · ZLPR +0.95pt · ASL +2.26pt. 손실 교체로 focal micro를 넘은 후보는 없다.
+- **focal이 네 손실 중 micro 최고다** — BCE +0.50pt · ZLPR +0.95pt · ASL +2.26pt. 손실 교체로 focal micro를 넘은 후보는 없다. ZLPR·ASL의 열세는 잡음 대비 여유가 넓어 확정이나, **focal−BCE는 두 번째 시드에서 +0.34pt로 줄며 유의성을 잃어 미확정**이다([eval-noise.md](eval-noise.md)).
 - **empty rate는 eff128 런이 손실 무관하게 focal eff8(exp2 1.79%)보다 낮다.** 배치 상향의 이득이 micro 상한이 아니라 캘리브레이션 축에 나타남을 손실 4종 교차로 보인다.
 - focal 행만 clean 데이터라 09_xx와 test가 27건 다르나, 서열 마진이 그보다 커 판정 불변.
 
@@ -187,7 +187,7 @@ loss_func.md 초안은 임계값 민감도 기준(ZLPR ≳ DL2 > ASL)과 서사�
 - **레시피**(08_01/08_02로 확정): len512 · eff_batch 128 · lr 4.8e-4 · 12 epoch. focal에서 γ·α를 제거한 순수 BCE(`reduction="mean"`). focal 대체 지점만 교체하고 나머지 경로는 공통 프로토콜 고정.
 - **최종 test**: micro **0.8538** · macro 0.8508 · sample 0.8689 · empty_rate 1.06% · anchor 0.8133. best val micro 0.8580.
 
-**판정(진단): focal −0.62pt.** "focal>BCE"는 이 프로젝트에서 미측정 가정이었다(베이스라인이 처음부터 focal). BCE 1런으로 focal의 γ가 이 구조에서 값을 하는지 진단한다 — γ는 **작지만 실재하는 이득**이다.
+**판정(진단): focal −0.62pt, 단 시드 취약.** "focal>BCE"는 이 프로젝트에서 미측정 가정이었다(베이스라인이 처음부터 focal). BCE 1런으로 focal의 γ가 이 구조에서 값을 하는지 진단한다 — 점추정은 focal 우세이나 **그 크기가 시드를 견디지 못한다**. 동일 레시피 비교가 focal seed 42에서 +0.52pt(CI [+0.13, +0.91])인데, focal 쪽 시드만 153으로 바꾸면 **+0.34pt(CI [−0.05, +0.74])로 유의성을 잃는다**([eval-noise.md](eval-noise.md)). 손실 4종 중 이 취약성을 보이는 것은 focal−BCE뿐이다. γ의 이득은 **방향 시사이지 확정된 크기가 아니다.** 아래 오류 분석의 k≥2 편중은 기제 서술로 남고, focal 채택은 이 크기 주장이 아니라 서열 점추정(두 시드 모두 focal 우세)과 ZLPR·ASL 대비 확정 우위에 근거한다.
 
 **오류 분석(09_04, focal exp2 대비).** BCE는 focal에서 γ만 뺀 같은 계열이라 **operating point가 focal과 사실상 동일**하다 — k=1 fp/fn 1.932(focal 1.944) · k≥2 fp/fn 0.339(focal 0.338) · 전역 FP/FN 1,990/1,978(focal 1,916/1,884)로 균형이 focal과 겹친다. 격차 −0.62pt는 **k≥2에 집중**된다(k≥2 micro 0.7994→0.7864, k=1은 0.8822→0.8782로 −0.4pt에 그침). 즉 focal의 γ는 k≥2의 눌린 hard positive를 sharpening하는 이득이며, 그 크기가 γ의 순수 값이다.
 
