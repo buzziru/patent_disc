@@ -151,6 +151,17 @@ runner.predict_logits("test")     # logits_{tag}_test.npy 덤프 → error_analy
 - ⚠️ **실행 중인 팟을 Edit하면 리셋**되어 볼륨 밖 데이터가 지워진다. 이미지 태그를 바꾸려면 Edit 대신 **새 팟**으로 띄운다.
 - 며칠 이상 쉴 거면 Terminate가 대개 이득(볼륨 월 요금 vs 이미지 재pull 수 분의 GPU 요금).
 
+### 처리량 기준선 (실측 — 다음 런의 시간·비용 견적용)
+
+| 작업 | 하드웨어 | 처리량 | 실측 소요 |
+| --- | --- | --- | --- |
+| 분류 파인튜닝 @512 | A40 | ≈41,500 tok/s | 12 epoch 풀런 8h 20m(18,912 step @ eff128) |
+| MLM(TAPT) @2048 | Colab L4 | ≈15,900 tok/s | epoch ≈2.8h, 5 epoch ≈14h |
+
+- **A100 PCIe는 A40의 ~2배 속도지만 시간당 3.16배**라 같은 작업에서 A40이 ~37% 저렴하다.
+- 위 tok/s는 **실토큰 기준**이다 — 훈련 경로가 동적 패딩·길이 그룹 배칭·ModernBERT unpadding으로 패딩을 계산하지 않으므로, 창을 키워도 비용은 창 크기가 아니라 실토큰과 어텐션의 초선형 항만 따라 오른다(`output/length_cost.json`·[final-run.md](../experiments/final-run.md)).
+- **`max_len`이 실제로 제약하는 것은 `micro_batch` 상한**(최악 배치 메모리)이다. 512에서 micro 128 = 65,536 토큰/배치를 기준으로 환산하면 다른 창의 출발점이 나온다.
+
 ## 트러블슈팅 — 증상별
 
 | 증상 | 원인 | 조치 |

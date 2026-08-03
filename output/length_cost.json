@@ -1,0 +1,101 @@
+{
+  "question": "배포 런의 max_len을 무엇으로 둘 것인가 — 잃는 것(절단)과 아끼는 것(비용·메모리).",
+  "backbone": {
+    "model": "skt/A.X-Encoder-base",
+    "rev": "9708f9c404ace91efd25c06fac2d73413616f4ef",
+    "hidden": 768,
+    "ffn": 1152,
+    "layers": 22,
+    "global_every": 3,
+    "n_global": 8,
+    "local_window": 128,
+    "max_position_embeddings": 16384
+  },
+  "dataset": {
+    "id": "ingyoun/patent-clean-text-modernbert-tokenized",
+    "split": "train",
+    "n_docs": 201616
+  },
+  "length": {
+    "mean": 795.5150087294659,
+    "max": 10523.0,
+    "p25": 436.0,
+    "p50": 629.0,
+    "p75": 928.0,
+    "p90": 1375.0,
+    "p95": 1807.0,
+    "p99": 3618.850000000006
+  },
+  "by_max_len": {
+    "512": {
+      "truncated_docs": 0.6456432029204031,
+      "lost_tokens": 0.41995251107507336,
+      "total_tokens": 93032978,
+      "attention_share": 0.13532666871855226,
+      "worst_seq": 512,
+      "cost_vs_512": 1.0,
+      "cost_vs_8192": 0.496,
+      "micro_batch_headroom_vs_8192": 16.0
+    },
+    "1024": {
+      "truncated_docs": 0.2018738592175224,
+      "lost_tokens": 0.17363762753294731,
+      "total_tokens": 132539066,
+      "attention_share": 0.18047243876426589,
+      "worst_seq": 1024,
+      "cost_vs_512": 1.503,
+      "cost_vs_8192": 0.745,
+      "micro_batch_headroom_vs_8192": 8.0
+    },
+    "2048": {
+      "truncated_docs": 0.03666871676851043,
+      "lost_tokens": 0.05869813503025911,
+      "total_tokens": 150974045,
+      "attention_share": 0.21582349090267355,
+      "worst_seq": 2048,
+      "cost_vs_512": 1.789,
+      "cost_vs_8192": 0.887,
+      "micro_batch_headroom_vs_8192": 4.0
+    },
+    "4096": {
+      "truncated_docs": 0.0077821204666296325,
+      "lost_tokens": 0.016022022369501454,
+      "total_tokens": 157818805,
+      "attention_share": 0.24231465044324765,
+      "worst_seq": 4096,
+      "cost_vs_512": 1.936,
+      "cost_vs_8192": 0.96,
+      "micro_batch_headroom_vs_8192": 2.0
+    },
+    "8192": {
+      "truncated_docs": 0.00036207443853662405,
+      "lost_tokens": 0.00019872365705098094,
+      "total_tokens": 160356681,
+      "attention_share": 0.2610032947052404,
+      "worst_seq": 8192,
+      "cost_vs_512": 2.017,
+      "cost_vs_8192": 1.0,
+      "micro_batch_headroom_vs_8192": 1.0
+    }
+  },
+  "length_grouped_batching": {
+    "2048": {
+      "mean_over_max_in_group": 0.9988909406274417,
+      "median_group_max": 629.0,
+      "median_group_max_over_window": 0.30712890625
+    },
+    "4096": {
+      "mean_over_max_in_group": 0.9986712994549014,
+      "median_group_max": 629.0,
+      "median_group_max_over_window": 0.153564453125
+    },
+    "8192": {
+      "mean_over_max_in_group": 0.9984632304128684,
+      "median_group_max": 629.0,
+      "median_group_max_over_window": 0.0767822265625
+    }
+  },
+  "eff_batch": 128,
+  "script": "scripts/length_cost.py",
+  "note": "비용은 FLOPs 비율이며 실측 벽시계가 아니다. 패딩은 동적 패딩·길이 그룹 배칭·ModernBERT unpadding으로 이미 제거돼 있어 창 크기에 비례하지 않는다 — max_len이 실제로 제약하는 것은 최악 배치 메모리 = micro_batch 상한이다."
+}
