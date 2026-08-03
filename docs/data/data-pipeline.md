@@ -1,37 +1,38 @@
 # 데이터 파이프라인 — zip → 정제 텍스트(HF Hub) → 소비 시 토큰화
 
-> **2계층 설계.** 
->
-> Layer 1: raw zip을 1회 정제해 **미토큰화 텍스트 데이터셋**을 HF Hub(parquet)에 올린다(모델·토크나이저 무관). 
->
-> Layer 2: 실험마다 그걸 streaming으로 받아 **소비 시점에 토큰화**한다.
->
-> raw zip을 **디스크에 풀지 않음** · Colab에 데이터를 **업로드하지 않음** · 두 플랫폼의 **데이터 로딩 코드 일원화**.
-> 데이터 원본 구조는 `[data.md](./data.md)`, 실행 인프라는 `[colab-jobs.md](../infra/colab-jobs.md)` · `[lightning-jobs.md](../infra/lightning-jobs.md)`.
+원본 zip을 그대로 두고 **정제 텍스트를 한 번만 만들어 HF Hub에 올린 뒤, 실험마다 그것을 받아 토큰화**하는 2계층 설계다.
+
+- **Layer 1**: raw zip을 1회 정제해 **토큰화하지 않은 텍스트 데이터셋**을 HF Hub(parquet)에 올린다. 모델·토크나이저와 무관하다.
+- **Layer 2**: 실험마다 그것을 streaming으로 받아 **소비 시점에 토큰화**한다.
+
+이렇게 하면 raw zip을 디스크에 풀지 않아도 되고, Colab에 데이터를 업로드할 필요가 없으며, 두 플랫폼의 데이터 로딩 코드가 하나로 통일된다.
+
+기호·용어는 [GLOSSARY.md](../GLOSSARY.md), 데이터 원본 구조는 [data.md](./data.md), 실행 인프라는 [colab-jobs.md](../infra/colab-jobs.md)·[lightning-jobs.md](../infra/lightning-jobs.md)를 참조한다.
 
 ## 왜 이 구조인가
 
-- 데이터는 **특허 1건 = 작은 JSON 1개**(zip당 수천 개). 전량 `unzip`하면 파일 수십만 개 → inode·FS 부담. `zipfile`**로 프로그램 스트리밍**해 곧장 정제본을 만든다.
-- Colab VM은 **원격·휘발성** → 로컬 `data/`를 못 본다. **VM 안에서 HF Hub를 pull**하면 매 세션 업로드가 사라진다.
-- Lightning Job도 **별도 GPU 머신의 컨테이너**에서 돌아 로컬 `data/`를 못 본다. **컨테이너 안에서 HF Hub를 pull**하면 Colab과 로딩 코드가 그대로 같아진다.
-- **토큰화본이 아니라 텍스트를 올리는 이유**: 토큰화하면 ①토크나이저(A.X-Encoder / KLUE-RoBERTa / KoBERT 3종 비교) ②입력 필드 조합(핵심 실험 변수) ③`MAX_LEN` 세 축이 한꺼번에 고정된다. 텍스트를 SSOT로 두고 **토큰화를 Layer 2(소비 시)로 미루면** 세 축을 자유롭게 실험한다.
+- 데이터는 **특허 1건이 작은 JSON 1개**이고 zip당 수천 개가 들어 있다. 전량 `unzip`하면 파일이 수십만 개가 되어 파일시스템에 부담을 준다. 그래서 `zipfile`로 프로그램에서 스트리밍해 곧장 정제본을 만든다.
+- Colab VM은 원격·휘발성이라 로컬 `data/`를 볼 수 없다. VM 안에서 HF Hub를 받아오면 매 세션 업로드가 사라진다.
+- Lightning Job도 별도 GPU 머신의 컨테이너에서 돌아 로컬 `data/`를 볼 수 없다. 컨테이너 안에서 HF Hub를 받아오면 Colab과 로딩 코드가 그대로 같아진다.
+
+**토큰화본이 아니라 텍스트를 올리는 이유**는 실험 변수를 열어 두기 위해서다. 미리 토큰화하면 세 축이 한꺼번에 고정된다 — ① 토크나이저(A.X-Encoder / KLUE-RoBERTa / KoBERT 3종 비교), ② 입력 필드 조합, ③ `MAX_LEN`. 텍스트를 SSOT로 두고 토큰화를 Layer 2로 미루면 세 축을 자유롭게 바꿀 수 있다.
 
 ---
 
 ## Layer 1 — 정제 텍스트 데이터셋 (1회, 모델·토크나이저 무관)
 
-산출물: `<user>/patent-clean-text` (HF Hub, split=train/validation/test, parquet). **미토큰화.**
+산출물은 `<user>/patent-clean-text`(HF Hub, split=train/validation/test, parquet)이며 토큰화하지 않은 상태다.
 
-### 핵심 결정 (SSOT 반영)
+### 핵심 결정
 
-- **레이블은 문서별 다중-핫(multi-label)**. 한 특허가 여러 `Mno`에 대응하므로, 문서 단위로 `Mno` 집합을 모은다. → `label_ids: list[int]`(0..187)로 저장, 다중-핫 벡터는 Layer 2에서 생성.
-- **조인/집계 키는 `documentId`(=파일명, 고유 특허)**. 라벨 zip은 **파일명에 `Mno`가 인코딩**돼 있어(`…_EG10_핵융합.zip` → `EG10`) 라벨 JSON을 열 필요 없이 zip명만으로 `Mno`를 얻는다.
-- **분할은 `documentId` 단위.** 제공된 `Training`/`Validation` 폴더는 **7,822개 문서가 겹쳐**(누수) 그대로 못 쓴다 → 전체 고유 문서를 모아 재분할한다(문서당 1행이므로 일반 셔플 분할이 곧 group-safe).
-- 텍스트 필드는 **개별 컬럼**으로 보존(`invention_title`·`abstract`·`claims`·`ipc_main`). concat/필드조합은 Layer 2에서.
+- **라벨은 문서별 다중-핫이다.** 한 특허가 여러 `Mno`에 대응하므로 문서 단위로 `Mno` 집합을 모아 `label_ids: list[int]`(0~187)로 저장하고, 다중-핫 벡터는 Layer 2에서 만든다.
+- **조인·집계 키는 `documentId`(= 파일명)다.** 라벨 zip은 파일명에 `Mno`가 들어 있어(`…_EG10_핵융합.zip` → `EG10`) 라벨 JSON을 열지 않고 zip 이름만으로 `Mno`를 얻는다.
+- **분할은 `documentId` 단위로 한다.** 제공된 `Training`/`Validation` 폴더는 7,822개 문서가 겹쳐 누수가 있으므로 그대로 쓸 수 없다. 전체 고유 문서를 모아 재분할하며, 문서당 1행이므로 일반 셔플 분할이 곧 group-safe다.
+- **텍스트 필드는 개별 컬럼으로 보존한다**(`invention_title`·`abstract`·`claims`·`ipc_main`). 연결과 필드 조합은 Layer 2에서 한다.
 
 ### 절차
 
-**Pass 1 — 라벨 인덱스 + 매핑 (Label zip의 `namelist()`만; JSON 파싱 불필요)**
+**Pass 1 — 라벨 인덱스와 매핑** (Label zip의 `namelist()`만 읽고 JSON은 파싱하지 않는다)
 
 ```python
 import re, zipfile
@@ -58,7 +59,7 @@ ID2MNO = {i: m for m, i in MNO2ID.items()}
 MNO2LNO = {m: m[:2] for m in MNO2ID}               # Lno = Mno 앞 2글자 (EG10 -> EG)
 ```
 
-**Pass 2 — 텍스트 수집 (Orig zip 스트리밍, `documentId` 최초 1회만 = dedupe)**
+**Pass 2 — 텍스트 수집** (Orig zip 스트리밍, `documentId`를 최초 1회만 취해 중복을 제거한다)
 
 ```python
 import json
@@ -88,7 +89,7 @@ def iter_clean_records(doc2mno):
                     }
 ```
 
-**분할 + 업로드 (`documentId` 단위)**
+**분할과 업로드** (`documentId` 단위)
 
 ```python
 from datasets import Dataset
@@ -104,8 +105,10 @@ for name, part in splits.items():
 # MNO2ID / MNO2LNO 는 리포에 함께 저장(json) — 역매핑·Lno 매핑 재현용
 ```
 
-> ⚠️ **빈 텍스트 문서**: 업체 baseline은 `abstract`·`claims`가 **둘 다** 비면 제거했다(실측 1건). 같은 규칙을 적용할지 정해 여기서 필터링한다.
-> ⚠️ **baseline 프로토콜 재현**은 별개 이슈 — 위 분할 비율/시드는 자체 비교선용. 공식 0.8249는 절대 기준 아님(`[PROJECT.md](../../PROJECT.md)` 평가 절).
+두 가지를 이 단계에서 정한다.
+
+- **빈 텍스트 문서**: 업체 baseline은 `abstract`와 `claims`가 **둘 다** 비면 제거했다(실측 1건). 같은 규칙을 적용할지 여기서 정해 필터링한다.
+- **분할 비율·시드는 자체 비교선용이다.** baseline 프로토콜 재현은 별개 사안이며, 공식 `0.8249`는 절대 기준이 아니다([PROJECT.md](../../PROJECT.md) 평가 절).
 
 ---
 
@@ -134,32 +137,29 @@ def tokenize(ex):
 ds = ds.map(tokenize, remove_columns=[c for c in ds.column_names])
 ```
 
-- 모델 헤드: `AutoModelForSequenceClassification.from_pretrained(..., num_labels=188, problem_type="multi_label_classification")` → sigmoid + BCE.
-- 지표: **baseline 비교는 top-1 예측 weighted-F1**(KoBERT baseline과 동일 계산 — `../../PROJECT.md` 평가 절, 재현 절차 `../experiments/kobert-baseline.md`). 멀티레이블 프레이밍용으로 **micro/macro-F1(임계값 0.5, 검증셋 튜닝)·P@1/3/5** 병기. test split은 고정해 전 실험 재사용.
+- 모델 헤드는 `AutoModelForSequenceClassification.from_pretrained(..., num_labels=188, problem_type="multi_label_classification")`로 sigmoid + BCE 경로를 쓴다.
+- 지표는 **다중 라벨 micro/macro-F1**(임계값 0.5)을 주로 보고, baseline과 맞대는 **top-1 예측 weighted-F1**과 `P@1/3/5`를 병기한다([PROJECT.md](../../PROJECT.md) 평가 절, 재현 절차는 [kobert-baseline.md](../experiments/kobert-baseline.md)). test split은 고정해 모든 실험에서 재사용한다.
 
 ## Streaming(IterableDataset) 주의
 
-1. `**len()` 없음** → HF `Trainer`에 `max_steps` 명시(steps 기반 스케줄).
-2. **셔플이 버퍼 기반**: `ds.shuffle(buffer_size=…, seed=…)` — 전역 아님. buffer 넉넉히, epoch마다 seed 재설정.
-3. **동적 패딩**: `DataCollatorWithPadding`으로 배치 단위 패딩(저장은 가변 길이).
-4. **다중-핫 라벨**: collator가 `labels`를 float 텐서로 유지하도록 확인(BCEWithLogits).
-5. **샤딩 저장**: parquet를 여러 shard로 → 스트리밍 처리량·병렬 로딩 유리.
+1. **`len()`이 없다** → HF `Trainer`에 `max_steps`를 명시해 스텝 기반 스케줄을 쓴다.
+2. **셔플이 버퍼 기반이다** — `ds.shuffle(buffer_size=…, seed=…)`는 전역 셔플이 아니다. 버퍼를 넉넉히 잡고 epoch마다 seed를 재설정한다.
+3. **동적 패딩**: `DataCollatorWithPadding`으로 배치 단위 패딩을 건다(저장은 가변 길이).
+4. **다중-핫 라벨**: collator가 `labels`를 float 텐서로 유지하는지 확인한다(`BCEWithLogits` 요구사항).
+5. **샤딩 저장**: parquet를 여러 shard로 나누면 스트리밍 처리량과 병렬 로딩에 유리하다.
 
 ## 원칙 요약
 
-- **텍스트로 저장**(토큰화 미리 안 함) — 토크나이저·필드조합·`MAX_LEN` 3축을 소비 시 자유화.
-- **가변 길이 저장**(패딩 금지) — 패딩은 Layer 2 collator에서 동적으로.
-- **레이블은 `label_ids` 리스트로 저장**(가변) — 다중-핫 벡터는 소비 시 생성.
-- `**MNO2ID`/`MNO2LNO`(188)**를 리포에 동봉(역매핑·`Mno`→`Lno` 매핑 재현).
-- **분할은 `documentId` 단위** — 제공 폴더 누수(7,822건) 회피.
+- **텍스트로 저장한다**(미리 토큰화하지 않는다) — 토크나이저·필드 조합·`MAX_LEN` 세 축을 소비 시점에 자유화한다.
+- **가변 길이로 저장한다**(패딩 금지) — 패딩은 Layer 2의 collator에서 동적으로 건다.
+- **라벨은 `label_ids` 리스트로 저장한다** — 다중-핫 벡터는 소비 시점에 만든다.
+- **`MNO2ID`·`MNO2LNO`(188개)를 리포에 동봉한다** — 역매핑과 `Mno`→`Lno` 매핑을 재현하기 위해서다.
+- **분할은 `documentId` 단위로 한다** — 제공 폴더의 누수 7,822건을 피한다.
 
 ## 플랫폼별 데이터 반입 요약
 
-
-|               | Colab                        | Lightning Job (Docker 이미지)                                       |
-| ------------- | ---------------------------- | ---------------------------------------------------------------- |
-| 로컬 `data/` 접근 | ✗ (원격·휘발 VM)                 | ✗ (별도 GPU 머신의 컨테이너)                                              |
-| 권장 반입         | **HF Hub pull(streaming)**   | **HF Hub pull(streaming)** (또는 `path_mappings`로 data-connection) |
-| 인증            | 노트북 `os.environ["HF_TOKEN"]` | SDK `env={"HF_TOKEN": …}`                                        |
-
-
+| | Colab | Lightning Job (Docker 이미지) |
+| --- | --- | --- |
+| 로컬 `data/` 접근 | 불가(원격·휘발 VM) | 불가(별도 GPU 머신의 컨테이너) |
+| 권장 반입 | **HF Hub pull(streaming)** | **HF Hub pull(streaming)** 또는 `path_mappings`로 data-connection |
+| 인증 | 노트북 `os.environ["HF_TOKEN"]` | SDK `env={"HF_TOKEN": …}` |

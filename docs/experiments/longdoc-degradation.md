@@ -1,12 +1,12 @@
 # 장문 열화 진단 — 표현(pooling) vs 결정(threshold), label-aware attention 게이트
 
-> **목적**: 긴 문서에서 성능이 떨어지는 현상을 label-aware attention 헤드로 겨냥하기 전에, 저하의 **성격**을 저장된 로짓만으로(로컬 CPU) 판별하는 게이트다. 무훈련 오라클 게이트(오라클-`Lno`·오라클-τ·오라클-k, `[no-train-analysis.md](./no-train-analysis.md)`)와 같은 역할 — 비싼 GPU 실험 전에 헤드룸과 그 도달 가능성을 먼저 잰다.
+> **목적**: 긴 문서에서 성능이 떨어지는 현상을 label-aware attention 헤드로 겨냥하기 전에, 저하의 **성격**을 저장된 로짓만으로(로컬 CPU) 판별하는 게이트다. 무훈련 오라클 게이트(오라클-`Lno`·오라클-τ·오라클-k, [no-train-analysis.md](./no-train-analysis.md))와 같은 역할 — 비싼 GPU 실험 전에 헤드룸과 그 도달 가능성을 먼저 잰다.
 >
 > 판정 축: **멀티라벨 micro-F1 · P@1 · R-Precision**(`PROJECT.md` 평가 절). SSOT = `output/longdoc_probe_test.json` · 노트북 `notebook/10_02_LongDoc_Probe.ipynb`.
 
 ## 배경 — 이미 알려진 것
 
-- **장문 열화는 실재한다.** exp1(A.X 8192)의 길이 bin(`kobert_len` 축)별 micro가 B0(≤512) 0.8765 → B3(>2048) 0.8490으로 내려간다(`[modernbert-comparison.md](./modernbert-comparison.md)` 「3-모델 bin 비교」).
+- **장문 열화는 실재한다.** exp1(A.X 8192)의 길이 bin(`kobert_len` 축)별 micro가 B0(≤512) 0.8765 → B3(>2048) 0.8490으로 내려간다([modernbert-comparison.md](./modernbert-comparison.md) 「3-모델 bin 비교」).
 - **그 열화는 대분류 혼동의 증가가 아니다.** 앵커 오류율은 길이에 따라 오르나 sibling 비율이 함께 오르지 않고, 문서당 FP·FN이 균등하게 증가한다 — 대분류 판별이 아니라 전반적 확신도의 문제로, 처방이 표현력보다 결정층(캘리브레이션)을 가리킨다는 1차 신호다(`modernbert-comparison.md` 「오류 구조」).
 - **길이-조건부 캘리브레이션은 닫혀 있다.** 길이 bin별 온도·아핀 보정의 오라클 헤드룸이 +0.08~0.24pt에 그친다([ADR-0006](../adr/0006-no-calibration.md)) — 결정층 레버는 거의 소진 상태다.
 

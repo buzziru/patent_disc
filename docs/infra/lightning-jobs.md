@@ -3,7 +3,7 @@
 > 작업은 **로컬 Windows 머신(CPU 전용)** 에서 하고, GPU 훈련은 **로컬에서 Lightning Python SDK로 비동기 Job을 제출**해 돌린다.
 > 환경 재현은 **`.venv`를 담은 커스텀 Docker 이미지**로 통일한다(스튜디오 스냅샷 대신). 대안 경로 = [Colab](./colab-jobs.md).
 >
-> ⚠️ 이전 버전은 "이 세션 = Lightning cloudspace 스튜디오 안"을 전제로 `--studio` 스냅샷 잡을 썼다. 로컬로 옮기면서 **이미지 기반 잡**으로 전환했다. 스튜디오 인터랙티브 세션 진단은 [studio-performance.md](./studio-performance.md)(과거 기록).
+> 스튜디오 인터랙티브 세션 진단은 [studio-performance.md](./studio-performance.md)(과거 기록).
 
 ## 결론 먼저 — 가능 여부 (SDK v2026.07.03 실측)
 

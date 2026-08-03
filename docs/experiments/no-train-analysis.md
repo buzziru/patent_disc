@@ -1,6 +1,6 @@
 # 무훈련 분석 3종 — 계획 (오류 분해 · 임계값 튜닝 · 토크나이저 분석)
 
-> **목적**:  (A) 계층 확장 여부를 결정할 오류 구조 데이터, (B) macro-F1 성능 레버(임계값 정책), (C) 「길이 vs 모델 분해」(`[modernbert-comparison.md](./modernbert-comparison.md)`)에서 모델 성분에 섞인 커버리지 성분의 기제 근거. 결과 수치는 `output/*.json`을 SSOT로 두고 해석은 비교 문서에 반영한다.
+> **목적**:  (A) 계층 확장 여부를 결정할 오류 구조 데이터, (B) macro-F1 성능 레버(임계값 정책), (C) 「길이 vs 모델 분해」([modernbert-comparison.md](./modernbert-comparison.md))에서 모델 성분에 섞인 커버리지 성분의 기제 근거. 결과 수치는 `output/*.json`을 SSOT로 두고 해석은 비교 문서에 반영한다.
 
 ## 공통 전제 — 로짓 재확보 (A·B의 선행 의존성)
 
@@ -9,7 +9,7 @@
 - 조치: **추론 전용 Colab 잡 1회**로 3모델 × {test, val} 로짓 6개를 일괄 덤프하고 로컬 `output/`으로 다운로드한다.
   - 체크포인트(HF Hub): `ingyoun/kobert-patent-baseline` / `ingyoun/A.X-patent-maxlen512` / `ingyoun/A.X-patent-maxlen8192`.
   - tag(기존 규약 유지): `kobert-patent-baseline_len512` / `modernbert-patent-len512` / `modernbert-patent-len8192`.
-  - ModernBERT 계열은 평가 노트북과 동일한 절단 규칙(훈련 `max_len`으로 `x[:max_len-1]+[eos]`)과 dtype 규칙(fp32 로드 + autocast bf16)을 적용한다 — `[modernbert.md](./modernbert.md)` 공통 프로토콜의 함정 두 가지가 그대로 적용된다.
+  - ModernBERT 계열은 평가 노트북과 동일한 절단 규칙(훈련 `max_len`으로 `x[:max_len-1]+[eos]`)과 dtype 규칙(fp32 로드 + autocast bf16)을 적용한다 — [modernbert.md](./modernbert.md) 공통 프로토콜의 함정 두 가지가 그대로 적용된다.
   - `DataLoader(shuffle=False)`이므로 로짓 행 순서 = 데이터셋 행 순서. `document_id`로 라벨·길이축과 조인한다.
   - 추론만이라 저렴 — 가장 무거운 A.X-8192도 기존 평가 노트북 1회 실행 규모(test 11,271 + val 11,162).
 - 파일 규약: `output/logits_{tag}_{split}.npy` (`split` ∈ {test, val}).
@@ -30,7 +30,7 @@
   - **길이 bin × 오류 유형**, **모델 간 오류 차집합**: 오류 구조를 기존 비교 축(`kobert_len` bin·모델/창 성분)에 얹는다.
 - **판정 기준**: 기준은 **결정 질문에 직접 답하는 양**으로 세운다 — "형제 혼동이 잦은가"(서술)가 아니라 "계층 구조가 이득인가"(결정)를 재야 한다. 조건부 구조는 형제 해상도를 얻는 대신 `Lno` 단계 오류를 복구 불가로 만들므로, 두 효과를 함께 담는 **2단계 추정 P@1**(= `Lno` 단계 정확도 × 오라클-`Lno` P@1)을 flat P@1과 비교해 **상회하면 계층 확장 검토 개시, 하회하면 flat 유지**한다. 오라클-`Lno` P@1은 `Mno` 예측을 정답 `Lno` 열로 제한한 값으로, 완벽한 `Lno` 단계를 가정한 상한이다. 판정은 exp1 기준, 3모델 교차 확인.
   - ⚠️ **이 기준은 결함 추정량이다** — 오라클-`Lno` P@1을 전체 문서에서 재므로 1단계 실패 문서가 두 항 모두에서 계상된다. 조건부로 교정하면 곱이 flat과 항등으로 일치해 판정력이 0이 된다(아래 「결과 요약」). 마스킹 시뮬레이션으로 계층 이득을 재려는 설계 자체의 한계다.
-- **산출물**: `notebook/06_01_Lno_Analysis.ipynb`(로컬 CPU로 충분 — 로짓·라벨 연산뿐), 수치 SSOT `output/error_analysis_{tag}.json`(모델별)과 `output/error_analysis_cross_model.json`(차집합·판정). 해석은 `[modernbert-comparison.md](./modernbert-comparison.md)` 「오류 구조」·「오류 수준 재현」·「라벨 개수 bin」에 반입했다.
+- **산출물**: `notebook/06_01_Lno_Analysis.ipynb`(로컬 CPU로 충분 — 로짓·라벨 연산뿐), 수치 SSOT `output/error_analysis_{tag}.json`(모델별)과 `output/error_analysis_cross_model.json`(차집합·판정). 해석은 [modernbert-comparison.md](./modernbert-comparison.md) 「오류 구조」·「오류 수준 재현」·「라벨 개수 bin」에 반입했다.
 - **verify(통과)**: sibling + cross-Lno == 총 오류 수(3모델) · 앵커 오류율 == 1−P@1 · 로짓 행 순서 == `document_id` 순서(11,271/11,271) · 재계산 empty rate가 `output/total_metrics_{tag}.json`과 일치(3/3).
 
 **결과 요약** (수치는 `output/error_analysis_*.json`):
@@ -44,7 +44,7 @@
 - 정답 `Lno`로 열을 제한하면 exp1 P@1이 0.9052 → 0.9551(+5.0pt)로 오른다. 이 +5.0pt가 조건부 구조의 헤드룸으로 보이는 양이다.
 - **위 표의 `Lno` 단계 정확도 × 오라클-`Lno` P@1은 1단계 실패를 두 번 계상한다.** 오라클-`Lno` P@1이 전체 문서 평균이라 1단계가 이미 틀린 문서의 결과가 둘째 항에 섞이고, 그 문서는 첫 항에서 이미 걸러진 뒤다. exp1의 0.9551은 1단계 적중 조건부 0.9630(가중 0.9398)과 실패 조건부 0.8301(가중 0.0602)의 혼합이며, 낮은 성분은 정답 `Lno` 마스크가 1단계 실패 문서를 되살려 만든 값이다.
 - **조건부로 교정한 2단계 추정은 flat과 정확히 일치한다(Δ = 0.0000).** 1단계 적중 문서에서는 마스크가 flat top-1 열을 포함해 argmax가 보존되고 `flat 적중 ⟹ 1단계 적중`이므로, 조건부 정확도 = flat P@1 / `Lno` 단계 정확도라는 항등이 성립한다(KoBERT 0.9579 / exp2 0.9629 / exp1 0.9631, 정리 test 4모델·두 마스크 확인). **즉 이 시뮬레이션은 계층 이득을 탐지할 수 없고, 음수 폭은 편향의 크기다.**
-- **남은 경계값**: 2단계 최적화의 P@1 상한은 1단계 정확도(exp1 0.9398 = flat +3.48pt [3.15, 3.82], 곧 sibling 오류 질량)이고, 현행 조건부 0.9630은 형제 구분을 최적화한 적 없는 값이다. 1단계 규칙만 바꾸는 무훈련 스윕은 최대 +0.04pt로 전부 구간이 0을 포함한다. 주 지표에서는 하드 단일 `Lno` 게이트의 micro recall 상한이 0.8590으로 exp1 현재 recall 0.8697 아래이며, top-2 게이트면 0.9672다. 상세 `[modernbert-comparison.md](./modernbert-comparison.md)` 「오류 구조」, 산출 `scripts/hierarchy_conditional.py`, 수치 `output/hierarchy_conditional.json`·`output/hierarchy_stage1_rules.json`.
+- **남은 경계값**: 2단계 최적화의 P@1 상한은 1단계 정확도(exp1 0.9398 = flat +3.48pt [3.15, 3.82], 곧 sibling 오류 질량)이고, 현행 조건부 0.9630은 형제 구분을 최적화한 적 없는 값이다. 1단계 규칙만 바꾸는 무훈련 스윕은 최대 +0.04pt로 전부 구간이 0을 포함한다. 주 지표에서는 하드 단일 `Lno` 게이트의 micro recall 상한이 0.8590으로 exp1 현재 recall 0.8697 아래이며, top-2 게이트면 0.9672다. 상세 [modernbert-comparison.md](./modernbert-comparison.md) 「오류 구조」, 산출 `scripts/hierarchy_conditional.py`, 수치 `output/hierarchy_conditional.json`·`output/hierarchy_stage1_rules.json`.
 
 | 모델 | 앵커 오류 | sibling | cross-Lno | 우연 수준 | 우연 대비 |
 | --- | --- | --- | --- | --- | --- |
@@ -58,7 +58,7 @@
 - **멀티라벨(τ=0.5)에서도 방향이 같다** — exp1 FP 1,807 중 sibling 40.0%, FN 1,766 중 sibling 36.7%.
 - **다라벨 문서의 결손은 recall 쪽이다** — FP:FN 비가 k=1에서 2.08, k≥2에서 **0.33**으로 뒤집힌다(exp1).
 
-**라벨 개수 bin — 주 지표 환산과 기제** (해석 반입: `[modernbert-comparison.md](./modernbert-comparison.md)` 「라벨 개수 bin」):
+**라벨 개수 bin — 주 지표 환산과 기제** (해석 반입: [modernbert-comparison.md](./modernbert-comparison.md) 「라벨 개수 bin」):
 
 - **k≥2의 무게는 문서 비율이 아니라 라벨 인스턴스 비율이다** — 문서 15.0%(1,692건)이지만 양성 라벨 인스턴스의 **29.4%**(3,985/13,564)를 갖는다. 주 지표가 micro-F1이므로 이쪽으로 읽어야 한다.
 - **k≥2 결손의 대부분은 표현이 아니라 결정 규칙이다** — k≥2 문서에만 오라클 카디널리티(정답 개수 `k`를 알고 상위 `k`개 선택)를 적용하면 micro가 KoBERT 0.8502→0.8646, exp2 0.8601→0.8760, exp1 **0.8685→0.8848(+1.63pt)**로 오른다. 랭킹을 전혀 바꾸지 않고 exp1이 KoBERT 재현선 대비 번 전체 개선(+1.83pt)에 맞먹는 양이 나온다. 예측 개수를 정답 개수와 맞추면 sample-F1은 정의상 R-Precision과 일치하므로(k≥2 exp1 둘 다 0.8698), 새 양이 아니라 기존 R-Precision을 주 지표 축으로 옮긴 값이다.
@@ -82,7 +82,7 @@
   3. **빈 예측 처리와의 조합**: "빈 예측 문서에 argmax 1개 강제" 규칙과 τ 정책의 결합 효과를 1회 비교.
   4. **헤드룸과 추정 한계의 분리**: τ가 이득을 못 내는 원인이 레버 부재인지 추정 실패인지 가른다 — 처방이 정반대다. **오라클**(test에서 직접 튜닝한 도달 불가 상한)이 헤드룸을, **학습 곡선**(val을 25/50/100%로 subsample해 적합 후 test 이득 측정)이 추정 품질을 잰다. A절의 오라클-`Lno`와 같은 역할.
 - **리포트**: 모델별 {τ=0.5, global τ, per-class τ} × {micro, macro, sample-F1, empty rate} 매트릭스 + **val→test 일반화 격차**(val 이득 대비 test 이득 — per-class τ 과적합 진단).
-- **산출물**: `notebook/06_02_Tau_Tuning.ipynb`(로컬 CPU로 충분), 수치 SSOT `output/threshold_{tag}.json`(정책·τ 벡터·지표·오라클·학습 곡선). 해석은 `[modernbert-comparison.md](./modernbert-comparison.md)` 「임계값 정책」에 반입했다.
+- **산출물**: `notebook/06_02_Tau_Tuning.ipynb`(로컬 CPU로 충분), 수치 SSOT `output/threshold_{tag}.json`(정책·τ 벡터·지표·오라클·학습 곡선). 해석은 [modernbert-comparison.md](./modernbert-comparison.md) 「임계값 정책」에 반입했다.
 - **verify(통과)**: τ=0.5 재계산치가 `output/total_metrics_{tag}.json`과 일치(3모델 × 6지표) · LRAP·R-Precision이 SSOT와 일치(τ 무관성 확인) · 로짓 행 순서 == `document_id` 순서(val·test 양쪽).
 
 **결과 요약** (수치는 `output/threshold_*.json`, macro 기준):
@@ -115,7 +115,7 @@
   1. **fertility**: 문서별 토큰 수 ÷ 문자 수 분포, 토크나이저별. 같은 창에 담기는 콘텐츠 양의 비는 이 값의 비로 예측된다.
   2. **coverage@512**: 512 창에 조각이 전부 들어온 마지막 어절까지의 원문 문자 수 ÷ 전체 문자 수 — 문서별 분포와 `kobert_len` bin별 분해. 절대 격차와 **KoBERT 대비 상대이득**을 함께 본다(주장이 상대량이므로).
   3. **열화 신호**: 과분절 — 어절당 서브워드 조각 수 분포와 3+ 조각 어절 비율. `[UNK]` 비율은 병행 측정하되 **KoBERT에는 적용되지 않는 지표**다(SentencePiece라 UNK가 원리적으로 발생하지 않아 실측 0.0000%). vocab 8,002의 표현 손실은 UNK가 아니라 과분절로 나타난다.
-- **산출물**: `notebook/06_03_Tokenizer_Analysis.ipynb`(로컬 `.venv` 커널), 수치 SSOT `output/tokenizer_analysis.json`. 해석은 `[modernbert-comparison.md](./modernbert-comparison.md)` 「3-모델 bin 비교」, KLUE 선측정은 `../data/data.md` 「KLUE-RoBERTa 토크나이저」에 반입했다.
+- **산출물**: `notebook/06_03_Tokenizer_Analysis.ipynb`(로컬 `.venv` 커널), 수치 SSOT `output/tokenizer_analysis.json`. 해석은 [modernbert-comparison.md](./modernbert-comparison.md) 「3-모델 bin 비교」, KLUE 선측정은 `../data/data.md` 「KLUE-RoBERTa 토크나이저」에 반입했다.
 - **verify(통과)**: 어절별 조각 수 합 == 문서 통째 토큰 수(3종 전부) · KoBERT `seq_len` == 데이터셋 `kobert_len`(SSOT) 11,271/11,271 일치 · A.X−KoBERT 길이 차가 `../data/data.md` 기존 실측(mean +88.4 / median +64 / p90 +185 / p99 +517 / min −1,463 / max +2,287)과 완전 일치. 상류 전처리(`02_02`·`04_01`)와 독립 경로로 계산돼 재현 증거가 된다.
 
 **결과 요약** (수치는 `output/tokenizer_analysis.json`):

@@ -6,7 +6,7 @@
 ## 언제 Colab을 쓰나
 
 - 단일 GPU로 충분한 인코더 훈련의 **기본 경로**. 장문 인코더(`skt/A.X-Encoder-base`, ModernBERT 계열, 최대 16,384 토큰)는 512 토큰 대비 메모리를 많이 써 L4 24GB가 안전.
-- ⚠️ accelerator는 tier-gated — L4 쿼터가 없으면 `--gpu T4`(16GB) fallback 또는 Lightning L4 Job으로.
+- accelerator는 계정 등급에 따라 제한된다 — L4 쿼터가 없으면 `--gpu T4`(16GB)로 내리거나 Lightning L4 Job으로 우회한다.
 
 ## 설치·인증 (1회)
 
@@ -43,7 +43,7 @@
 
 `colab new` → `colab exec -f nb.ipynb`(반복) → 산출물 회수 → `colab stop`. 노트북/스크립트는 데이터·코드를 받아 훈련을 돌리고 산출물(체크포인트·메트릭)을 `/content/out`에 쓴다.
 
-1. **세션 시작**: `colab new -s <name> --gpu L4`. ⚠️ `-s <name>`을 항상 지정(생략 시 랜덤 hex = 추적 불가).
+1. **세션 시작**: `colab new -s <name> --gpu L4`. `-s <name>`을 항상 지정한다(생략하면 랜덤 hex가 붙어 추적이 불가능하다).
 2. **실행**: `colab exec -s <name> -f nb.ipynb`(커널 state 지속 → 셀/노트북 나눠 점진 실행 가능). **끝나면 반드시 `colab stop -s <name>`.**
 3. **의존성**: `colab install -s <name> transformers datasets accelerate ...` 또는 노트북 상단 `!pip`. torch가 잡은 GPU 확인(`torch.cuda.get_device_name(0)` → L4=sm_89).
    - 로컬 환경은 **Python 3.12 + `uv.lock`**(현재 `torch 2.12.1+cu130`)으로 고정 — Colab과 버전을 맞추기 위함. VM에서도 같은 버전을 설치해 재현성 확보.
