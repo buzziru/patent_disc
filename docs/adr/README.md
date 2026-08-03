@@ -28,3 +28,4 @@
 | 0011 | 자원 제약 하 실험 방법론 — 단일 시드(signature 정합으로 방어) + 노트북 중심 코드(성숙 후 src 전환) | 수용 | [0011](./0011-resource-constrained-methodology.md) |
 | 0012 | 표현·풀링 축 종결 — 장문 열화는 본질적 난이도(고정 풀링 프로브 B3 최대 +0.32pt, concat 무상보); 학습형 attention 풀러 디프리오리티 | 수용 | [0012](./0012-representation-pooling-closure.md) |
 | 0013 | 도메인 사전학습 축 종결 — 자체 코퍼스 TAPT 기각(−0.15pt, 기제는 코퍼스 동일성); MLM 체크포인트 교체·기성 `KorPatElectra`(512 캡·비상업 라이선스) 모두 불채택 | 수용 | [0013](./0013-domain-pretraining-closure.md) |
+| 0014 | 계층 손실 축 종결 — MCLoss 그룹 항이 −1.20pt(잡음 밖); 기제는 기울기 예산 포획(종점 67.9%)과 형제 축 사각지대. λ 변형·BCE 기반 교체 모두 상한이 판정선 아래로 산술 확정 | 수용 | [0014](./0014-hierarchy-loss-closure.md) |

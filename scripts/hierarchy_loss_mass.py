@@ -52,11 +52,16 @@ MODELS = {
     "exp2(A.X 512)": "modernbert-patent-len512",
     "exp1(A.X 8192)": "modernbert-patent-len8192",
     "11_01(A.X 512)": "modernbert-patent-len512-b128",
+    "14_01(MCLoss)": "modernbert-patent-len512-mcl",
 }
 PRIMARY = "11_01(A.X 512)"          # 계층 손실 arm의 비교 기준선
+ARM = "14_01(MCLoss)"               # 기준선과 손실만 다른 arm
 SHARES = [0.1, 0.2, 0.3, 0.5]       # 표적 질량 중 회수 비율(민감도 축)
-# 11_01은 headline_cleaned_test.json에 없어 `docs/experiments/loss-function.md` 실측표로 대조한다
-REF_B128 = {"modernbert-patent-len512-b128": 0.8588}
+# headline_cleaned_test.json에 없는 런은 훈련 잡의 test 지표로 대조한다
+REF_EXTRA = {
+    "modernbert-patent-len512-b128": 0.8588,    # docs/experiments/loss-function.md 실측표
+    "modernbert-patent-len512-mcl": 0.8467,     # notebook_output/14_01_HierLoss_MCLoss.ipynb
+}
 
 
 def clean_axis():
@@ -101,15 +106,19 @@ def counts(P, Y, col_pos_group, grp_hit, sel=None):
     )
 
 
-def analyse(z, Y, ls, col_pos_group):
-    P = z >= 0.0                                # sigmoid >= 0.5
-    tp = P & Y
-
-    # 그룹 적중 마스크 — 열 c가 속한 Lno에서 정답을 하나라도 맞혔는가
+def group_hit_mask(tp, Y, ls):
+    """열 c가 속한 `Lno`에서 정답을 하나라도 맞혔는가 — 양성 항의 포화 여부."""
     grp_hit = np.zeros_like(Y, dtype=bool)
     for l in range(ls.L):
         cols = np.where(ls.lno_idx == l)[0]
         grp_hit[:, cols] = (tp[:, cols].sum(1) > 0)[:, None]
+    return grp_hit
+
+
+def analyse(z, Y, ls, col_pos_group):
+    P = z >= 0.0                                # sigmoid >= 0.5
+    tp = P & Y
+    grp_hit = group_hit_mask(tp, Y, ls)
 
     k = Y.sum(1)
     total = counts(P, Y, col_pos_group, grp_hit)
@@ -136,6 +145,92 @@ def analyse(z, Y, ls, col_pos_group):
     )
 
 
+def target_movement(base, arm, n):
+    """두 런의 표적 질량을 절대량·문서당·share 세 축으로 나란히 낸다.
+
+    share(표적/전체 FP·FN)는 관찰 지표로 쓸 수 없다 — 분모인 전체 FP·FN이 같이 움직이므로
+    표적 절대량이 늘어도 share가 내려가고, 줄어도 올라간다. 판정은 절대량·문서당으로 한다.
+    """
+    out = {"micro": {"base": base["micro"], "arm": arm["micro"],
+                     "delta": round(arm["micro"] - base["micro"], 4)}}
+    for key, denom in [("fp", "fp"), ("fn", "fn"),
+                       ("fp_cross_lno", "fp"), ("fp_within_lno", "fp"),
+                       ("fn_group_missed", "fn"), ("fn_group_saturated", "fn")]:
+        b, a = base["total"][key], arm["total"][key]
+        out[key] = {
+            "base": b, "arm": a, "delta": a - b,
+            "share_base": round(b / base["total"][denom], 4),
+            "share_arm": round(a / arm["total"][denom], 4),
+            "per_doc_base": round(b / n, 4), "per_doc_arm": round(a / n, 4),
+        }
+    return out
+
+
+def paired_bootstrap(za, zb, Y, n_boot=4000, seed=0):
+    """문서 단위 재표본으로 두 런의 micro 델타 분포를 낸다(평가·표본 잡음 성분).
+
+    두 런이 같은 test 문서를 보므로 짝지어 재표본한다 — `eval_noise_bootstrap.py`와 같은 절차.
+    """
+    rng = np.random.default_rng(seed)
+    cells = []
+    for z in (za, zb):
+        P = z >= 0.0
+        cells.append(((P & Y).sum(1), (P & ~Y).sum(1), (~P & Y).sum(1)))
+    n = len(Y)
+    deltas = np.empty(n_boot)
+    for b in range(n_boot):
+        i = rng.integers(0, n, n)
+        m = [micro(tp[i].sum(), fp[i].sum(), fn[i].sum()) for tp, fp, fn in cells]
+        deltas[b] = m[1] - m[0]
+    d = deltas * 100
+    return {
+        "n_boot": n_boot, "seed": seed,
+        "delta_pt": round(float(d.mean()), 3),
+        "ci95_pt": [round(float(np.percentile(d, 2.5)), 3),
+                    round(float(np.percentile(d, 97.5)), 3)],
+        "sd_pt": round(float(d.std()), 3),
+        "p_delta_ge_0": round(float((d >= 0).mean()), 4),
+    }
+
+
+def cells_at(z, tau, Y, ls, col_pos_group):
+    """임계 tau에서 FP/FN을 표적·비표적으로 가른다(작동점 정규화용)."""
+    P = z >= np.log(tau / (1 - tau))
+    tp, fp, fn = P & Y, P & ~Y, ~P & Y
+    grp_hit = group_hit_mask(tp, Y, ls)
+    return {
+        "tau": round(float(tau), 3),
+        "micro": round(float(micro(tp.sum(), fp.sum(), fn.sum())), 4),
+        "pred_per_doc": round(float(P.sum(1).mean()), 4),
+        "fp": int(fp.sum()), "fp_cross_lno": int((fp & ~col_pos_group).sum()),
+        "fp_within_lno": int((fp & col_pos_group).sum()),
+        "fn": int(fn.sum()), "fn_group_missed": int((fn & ~grp_hit).sum()),
+        "fn_group_saturated": int((fn & grp_hit).sum()),
+    }
+
+
+def matched_operating_point(za, zb, Y, ls, col_pos_group, taus=np.arange(0.50, 0.95, 0.005)):
+    """arm의 작동점을 기준선에 맞춘 뒤 표적 질량을 비교한다.
+
+    arm이 기준선보다 많이 예측하면(empty rate 하락) tau=0.5 비교에서 모든 오류 칸이 함께
+    늘어 표적의 증감이 작동점 이동에 섞인다. 예측량을 맞추고 재야 두 항이 표적에 남긴
+    효과와 순위 자체의 변화가 갈린다. tau는 진단용 정규화이며 임계 정책이 아니다
+    (임계값 축은 `PROJECT.md` 「닫힌 갈래」).
+    """
+    base = cells_at(za, 0.5, Y, ls, col_pos_group)
+    rows = {"base": base, "arm_tau0.5": cells_at(zb, 0.5, Y, ls, col_pos_group)}
+    for label, key in [("arm_matched_fp", "fp"), ("arm_matched_pred", "pred_per_doc")]:
+        cand = [cells_at(zb, t, Y, ls, col_pos_group) for t in taus]
+        rows[label] = min(cand, key=lambda c: abs(c[key] - base[key]))
+    keys = ["fp", "fp_cross_lno", "fp_within_lno", "fn", "fn_group_missed", "fn_group_saturated"]
+    return {
+        "rows": rows,
+        "delta_vs_base": {name: {**{k: rows[name][k] - base[k] for k in keys},
+                                 "micro_pt": round(100 * (rows[name]["micro"] - base["micro"]), 2)}
+                          for name in rows if name != "base"},
+    }
+
+
 def main():
     lm = json.load(open(hf_hub_download(RAW_DS, "label_mappings.json", repo_type="dataset"),
                         encoding="utf-8"))
@@ -146,13 +241,12 @@ def main():
     col_pos_group = ls.to_lno(Y)[:, ls.lno_idx]     # (n,C) 열 c의 Lno가 정답 Lno 집합에 있는가
 
     headline = json.loads((OUT / "headline_cleaned_test.json").read_text(encoding="utf-8"))
-    res = {}
+    res, logits = {}, {}
     for name, tag in MODELS.items():
-        z = load_logits(tag, keep, n_old, n)
+        z = logits[name] = load_logits(tag, keep, n_old, n)
         res[name] = analyse(z, Y, ls, col_pos_group)
-        # 11_01(b128)은 headline_cleaned_test.json에 없다 — loss-function.md 실측표의 값으로 대조
         ref = (headline["models"][tag]["new"]["micro"] if tag in headline["models"]
-               else REF_B128[tag])
+               else REF_EXTRA[tag])
         assert abs(res[name]["micro"] - ref) < 1e-3, (name, res[name]["micro"], ref)
 
     p = res[PRIMARY]
@@ -168,16 +262,54 @@ def main():
         print(f"  [{name}] FP {sl['fp']:,} 중 Lno 밖 {sl['fp_cross_lno']:,}"
               f" · FN {sl['fn']:,} 중 그룹 전체 놓침 {sl['fn_group_missed']:,}")
 
+    # 표적 질량의 이동 — 절대량으로 읽는다. share(표적/FP)는 분모가 함께 움직여 방향을 뒤집어 보인다
+    movement = target_movement(res[PRIMARY], res[ARM], n)
+    print(f"\n{ARM} vs {PRIMARY} — 표적 질량 이동 (n={n:,})")
+    for key, v in movement.items():
+        if key == "micro":
+            print(f"  micro {v['base']:.4f} → {v['arm']:.4f} ({100 * v['delta']:+.2f}pt)")
+            continue
+        print(f"  {key}: {v['base']:,} → {v['arm']:,} ({v['delta']:+,})"
+              f" · share {v['share_base']:.3f} → {v['share_arm']:.3f}"
+              f" · 문서당 {v['per_doc_base']:.4f} → {v['per_doc_arm']:.4f}")
+
+    boot = paired_bootstrap(logits[PRIMARY], logits[ARM], Y)
+    print(f"\n  paired bootstrap({boot['n_boot']}회): Δmicro {boot['delta_pt']:+.3f}pt"
+          f" · CI95 [{boot['ci95_pt'][0]:+.3f}, {boot['ci95_pt'][1]:+.3f}]"
+          f" · sd {boot['sd_pt']:.3f}pt · P(Δ≥0)={boot['p_delta_ge_0']:.4f}")
+
+    matched = matched_operating_point(logits[PRIMARY], logits[ARM], Y, ls, col_pos_group)
+    print("\n  작동점 정규화 — 예측량을 기준선에 맞춘 뒤 표적 질량")
+    for name, r in matched["rows"].items():
+        print(f"    {name:>17} τ {r['tau']:.3f} micro {r['micro']:.4f}"
+              f" pred/doc {r['pred_per_doc']:.4f} FP {r['fp']:,}"
+              f"(cross {r['fp_cross_lno']:,}/within {r['fp_within_lno']:,})"
+              f" FN {r['fn']:,}(missed {r['fn_group_missed']:,}/sat {r['fn_group_saturated']:,})")
+    for name, dv in matched["delta_vs_base"].items():
+        print(f"    {name:>17} Δ cross {dv['fp_cross_lno']:+,} · within {dv['fp_within_lno']:+,}"
+              f" · missed {dv['fn_group_missed']:+,} · sat {dv['fn_group_saturated']:+,}"
+              f" · micro {dv['micro_pt']:+.2f}pt")
+
     payload = {
         "note": "계층 손실(MCLoss) 그룹 항이 닿는 오류 질량과 micro 민감도. "
                 "음성 항 표적 = 정답 Lno 밖 FP, 양성 항 표적 = 그룹 전체를 놓친 FN. "
                 "sensitivity_oracle은 표적 질량의 일부를 오라클로 제거·회수했을 때의 micro이므로 "
                 "도달 불가 상한이지 목표치가 아니다. 평가 축 = 정리 test 11,244, tau=0.5.",
-        "n": n, "split": SPLIT, "tau": 0.5, "primary": PRIMARY,
+        "n": n, "split": SPLIT, "tau": 0.5, "primary": PRIMARY, "arm": ARM,
         "script": "scripts/hierarchy_loss_mass.py",
         "verify": "FP = cross + within · FN = missed + saturated · "
-                  "재계산 micro == output/headline_cleaned_test.json (4/4)",
+                  "재계산 micro == 훈련 잡 test 지표 (5/5)",
         "models": res,
+        "target_movement": movement,
+        "movement_note": "share(표적/전체 FP·FN)는 분모가 함께 움직이므로 관찰 지표로 쓸 수 없다. "
+                         "표적 절대량과 문서당 값으로 판정한다.",
+        "paired_bootstrap": boot,
+        "matched_operating_point": matched,
+        "matched_note": "arm이 기준선보다 많이 예측해(empty rate 1.17%→0.61%) tau=0.5 비교에는 "
+                        "작동점 이동이 섞인다. 예측량을 맞추면 음성 항 표적(cross FP)은 의도한 "
+                        "방향으로 움직이고 양성 항 표적(group missed FN)은 모든 작동점에서 "
+                        "악화한다. 어느 작동점에서도 micro가 회복되지 않으므로 캘리브레이션 "
+                        "차이가 아니라 순위 자체의 손실이다. tau는 진단용 정규화이며 임계 정책이 아니다.",
     }
     (OUT / "hierarchy_loss_mass.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")

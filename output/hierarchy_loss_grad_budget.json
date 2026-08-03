@@ -1,0 +1,476 @@
+{
+  "note": "계층 손실(MCLoss) 실패 기제. lambda는 초기화 시점의 손실 '값'을 맞췄을 뿐 기울기를 맞추지 않았고, focal이 alpha*(1-p)^gamma/188로 자기소멸하는 사이 그룹 항이 종점 기울기의 다수를 가져간다. 표적 크기가 아니라 전달 기제의 실패다.",
+  "n": 11244,
+  "split": "test",
+  "tau": 0.5,
+  "anchor": "11_01(focal)",
+  "arm": "14_01(MCL)",
+  "lambda": 0.044393,
+  "lambda_bce_same_rule": 0.5578,
+  "script": "scripts/hierarchy_loss_grad_budget.py",
+  "verify": "그룹 항 구현 == 14_01 5번 셀 · lambda == 기록된 두 항의 비 · 두 런의 eval step 24개 일치 · 로짓 행 축 == doc_ids_clean_test.json",
+  "gradient_budget": {
+    "init_s0.3": {
+      "focal": 0.047743,
+      "bce": 0.704292,
+      "group": 0.933721,
+      "grad_ratio_focal_base": 0.345,
+      "value_ratio_focal_base": 0.868,
+      "grad_ratio_bce_base": 0.673
+    },
+    "init_s0.5": {
+      "focal": 0.05529,
+      "bce": 0.723497,
+      "group": 1.124295,
+      "grad_ratio_focal_base": 0.359,
+      "value_ratio_focal_base": 0.903,
+      "grad_ratio_bce_base": 0.741
+    },
+    "init_s0.7": {
+      "focal": 0.065957,
+      "bce": 0.751113,
+      "group": 1.335367,
+      "grad_ratio_focal_base": 0.364,
+      "value_ratio_focal_base": 0.899,
+      "grad_ratio_bce_base": 0.8
+    },
+    "init_s0.9": {
+      "focal": 0.079159,
+      "bce": 0.786068,
+      "group": 1.563256,
+      "grad_ratio_focal_base": 0.364,
+      "value_ratio_focal_base": 0.877,
+      "grad_ratio_bce_base": 0.849
+    },
+    "init_s1.1": {
+      "focal": 0.094333,
+      "bce": 0.827295,
+      "group": 1.804505,
+      "grad_ratio_focal_base": 0.362,
+      "value_ratio_focal_base": 0.849,
+      "grad_ratio_bce_base": 0.889
+    },
+    "init_s1.3": {
+      "focal": 0.110997,
+      "bce": 0.873818,
+      "group": 2.056163,
+      "grad_ratio_focal_base": 0.359,
+      "value_ratio_focal_base": 0.822,
+      "grad_ratio_bce_base": 0.921
+    },
+    "11_01(focal)": {
+      "focal": 0.000852,
+      "bce": 0.006608,
+      "group": 0.042141,
+      "value_ratio_focal_base": 2.196,
+      "grad_ratio_focal_base": 2.115,
+      "grad_share_focal_base": 0.6789,
+      "grad_ratio_bce_base": 2.981,
+      "grad_share_bce_base": 0.7488
+    },
+    "14_01(MCL)": {
+      "focal": 0.001363,
+      "bce": 0.007331,
+      "group": 0.051493,
+      "value_ratio_focal_base": 1.677,
+      "grad_ratio_focal_base": 1.345,
+      "grad_share_focal_base": 0.5736,
+      "grad_ratio_bce_base": 2.925,
+      "grad_share_bce_base": 0.7452
+    },
+    "11_04(seed153)": {
+      "focal": 0.000871,
+      "bce": 0.006651,
+      "group": 0.042603,
+      "value_ratio_focal_base": 2.171,
+      "grad_ratio_focal_base": 2.086,
+      "grad_share_focal_base": 0.676,
+      "grad_ratio_bce_base": 3.004,
+      "grad_share_bce_base": 0.7503
+    },
+    "BCE": {
+      "focal": 0.0017,
+      "bce": 0.007736,
+      "group": 0.05971,
+      "value_ratio_focal_base": 1.559,
+      "grad_ratio_focal_base": 1.438,
+      "grad_share_focal_base": 0.5899,
+      "grad_ratio_bce_base": 4.087,
+      "grad_share_bce_base": 0.8034
+    }
+  },
+  "gradient_on_touched_logits": {
+    "all": {
+      "n": 191148,
+      "focal": 1.495e-09,
+      "lam_group": 4.741e-09,
+      "ratio": 3.17
+    },
+    "pos_group": {
+      "n": 12373,
+      "focal": 1.26e-08,
+      "lam_group": 3.11e-08,
+      "ratio": 2.47
+    },
+    "neg_group": {
+      "n": 178775,
+      "focal": 7.266e-10,
+      "lam_group": 2.917e-09,
+      "ratio": 4.01
+    }
+  },
+  "group_objective_saturation": {
+    "pos_groups": 12373,
+    "pos_already_satisfied": 10980,
+    "pos_satisfied_rate": 0.8874,
+    "neg_groups": 178775,
+    "neg_already_satisfied": 177612,
+    "neg_satisfied_rate": 0.9935,
+    "grad_share_on_satisfied": 0.4687,
+    "loss_share_on_satisfied": 0.2471
+  },
+  "logit_geometry": {
+    "true_label": {
+      "n": 13534,
+      "anchor_mean_logit": 3.297,
+      "14_01(MCL)": 1.495,
+      "11_04(seed153)": -0.07
+    },
+    "sibling_in_pos_lno": {
+      "n": 143897,
+      "anchor_mean_logit": -6.645,
+      "14_01(MCL)": 0.435,
+      "11_04(seed153)": 0.007
+    },
+    "outside_pos_lno": {
+      "n": 1956441,
+      "anchor_mean_logit": -7.383,
+      "14_01(MCL)": -3.811,
+      "11_04(seed153)": -0.027
+    },
+    "logit_sd": {
+      "11_01(focal)": 1.708,
+      "14_01(MCL)": 2.434,
+      "11_04(seed153)": 1.706,
+      "BCE": 2.329
+    }
+  },
+  "rank_localization": {
+    "11_01(focal)": {
+      "p_at_1": 0.9,
+      "lno_top1": 0.9361,
+      "within_lno_top1_cond": 0.9615,
+      "mean_rank_of_gold": 1.866
+    },
+    "14_01(MCL)": {
+      "p_at_1": 0.8926,
+      "lno_top1": 0.9334,
+      "within_lno_top1_cond": 0.9563,
+      "mean_rank_of_gold": 2.142,
+      "paired_bootstrap": {
+        "n_boot": 2000,
+        "delta_p_at_1_pt": -0.75,
+        "ci95_p_at_1_pt": [
+          -1.22,
+          -0.26
+        ],
+        "delta_within_cond_pt": -0.53,
+        "ci95_within_cond_pt": [
+          -0.87,
+          -0.18
+        ]
+      }
+    },
+    "11_04(seed153)": {
+      "p_at_1": 0.8975,
+      "lno_top1": 0.9345,
+      "within_lno_top1_cond": 0.9603,
+      "mean_rank_of_gold": 1.94,
+      "paired_bootstrap": {
+        "n_boot": 2000,
+        "delta_p_at_1_pt": -0.27,
+        "ci95_p_at_1_pt": [
+          -0.76,
+          0.23
+        ],
+        "delta_within_cond_pt": -0.12,
+        "ci95_within_cond_pt": [
+          -0.46,
+          0.21
+        ]
+      }
+    },
+    "BCE": {
+      "p_at_1": 0.8912,
+      "lno_top1": 0.9274,
+      "within_lno_top1_cond": 0.961,
+      "mean_rank_of_gold": 1.99
+    }
+  },
+  "lambda_proxy_training_curve": {
+    "points": [
+      {
+        "step": 788,
+        "epoch": 0.5,
+        "anchor_micro": 0.638039,
+        "arm_micro": 0.660585,
+        "delta_pt": 2.25,
+        "anchor_empty": 0.286202,
+        "arm_empty": 0.187657
+      },
+      {
+        "step": 1576,
+        "epoch": 1.0,
+        "anchor_micro": 0.719535,
+        "arm_micro": 0.718133,
+        "delta_pt": -0.14,
+        "anchor_empty": 0.190262,
+        "arm_empty": 0.067284
+      },
+      {
+        "step": 2364,
+        "epoch": 1.5,
+        "anchor_micro": 0.76381,
+        "arm_micro": 0.739947,
+        "delta_pt": -2.39,
+        "anchor_empty": 0.126752,
+        "arm_empty": 0.078692
+      },
+      {
+        "step": 3152,
+        "epoch": 2.0,
+        "anchor_micro": 0.790542,
+        "arm_micro": 0.761785,
+        "delta_pt": -2.88,
+        "anchor_empty": 0.09037,
+        "arm_empty": 0.082824
+      },
+      {
+        "step": 3940,
+        "epoch": 2.5,
+        "anchor_micro": 0.791781,
+        "arm_micro": 0.779081,
+        "delta_pt": -1.27,
+        "anchor_empty": 0.091897,
+        "arm_empty": 0.059289
+      },
+      {
+        "step": 4728,
+        "epoch": 3.0,
+        "anchor_micro": 0.795084,
+        "arm_micro": 0.779141,
+        "delta_pt": -1.59,
+        "anchor_empty": 0.081567,
+        "arm_empty": 0.035843
+      },
+      {
+        "step": 5516,
+        "epoch": 3.5,
+        "anchor_micro": 0.810149,
+        "arm_micro": 0.793933,
+        "delta_pt": -1.62,
+        "anchor_empty": 0.056414,
+        "arm_empty": 0.033507
+      },
+      {
+        "step": 6304,
+        "epoch": 4.0,
+        "anchor_micro": 0.805735,
+        "arm_micro": 0.799455,
+        "delta_pt": -0.63,
+        "anchor_empty": 0.086867,
+        "arm_empty": 0.044017
+      },
+      {
+        "step": 7092,
+        "epoch": 4.5,
+        "anchor_micro": 0.820618,
+        "arm_micro": 0.807552,
+        "delta_pt": -1.31,
+        "anchor_empty": 0.04761,
+        "arm_empty": 0.029554
+      },
+      {
+        "step": 7880,
+        "epoch": 5.0,
+        "anchor_micro": 0.808259,
+        "arm_micro": 0.806648,
+        "delta_pt": -0.16,
+        "anchor_empty": 0.062792,
+        "arm_empty": 0.028476
+      },
+      {
+        "step": 8668,
+        "epoch": 5.5,
+        "anchor_micro": 0.825024,
+        "arm_micro": 0.810271,
+        "delta_pt": -1.48,
+        "anchor_empty": 0.033327,
+        "arm_empty": 0.038448
+      },
+      {
+        "step": 9456,
+        "epoch": 6.0,
+        "anchor_micro": 0.83334,
+        "arm_micro": 0.819571,
+        "delta_pt": -1.38,
+        "anchor_empty": 0.038448,
+        "arm_empty": 0.035483
+      },
+      {
+        "step": 10244,
+        "epoch": 6.5,
+        "anchor_micro": 0.842357,
+        "arm_micro": 0.818604,
+        "delta_pt": -2.38,
+        "anchor_empty": 0.027758,
+        "arm_empty": 0.018595
+      },
+      {
+        "step": 11032,
+        "epoch": 7.0,
+        "anchor_micro": 0.831404,
+        "arm_micro": 0.829985,
+        "delta_pt": -0.14,
+        "anchor_empty": 0.051024,
+        "arm_empty": 0.024793
+      },
+      {
+        "step": 11820,
+        "epoch": 7.5,
+        "anchor_micro": 0.840809,
+        "arm_micro": 0.826277,
+        "delta_pt": -1.45,
+        "anchor_empty": 0.027937,
+        "arm_empty": 0.016349
+      },
+      {
+        "step": 12608,
+        "epoch": 8.0,
+        "anchor_micro": 0.846856,
+        "arm_micro": 0.831569,
+        "delta_pt": -1.53,
+        "anchor_empty": 0.02686,
+        "arm_empty": 0.014193
+      },
+      {
+        "step": 13396,
+        "epoch": 8.5,
+        "anchor_micro": 0.847173,
+        "arm_micro": 0.83279,
+        "delta_pt": -1.44,
+        "anchor_empty": 0.016709,
+        "arm_empty": 0.013475
+      },
+      {
+        "step": 14184,
+        "epoch": 9.0,
+        "anchor_micro": 0.847525,
+        "arm_micro": 0.836737,
+        "delta_pt": -1.08,
+        "anchor_empty": 0.024704,
+        "arm_empty": 0.01069
+      },
+      {
+        "step": 14972,
+        "epoch": 9.5,
+        "anchor_micro": 0.852946,
+        "arm_micro": 0.83773,
+        "delta_pt": -1.52,
+        "anchor_empty": 0.017607,
+        "arm_empty": 0.007186
+      },
+      {
+        "step": 15760,
+        "epoch": 10.0,
+        "anchor_micro": 0.855463,
+        "arm_micro": 0.842132,
+        "delta_pt": -1.33,
+        "anchor_empty": 0.011139,
+        "arm_empty": 0.007366
+      },
+      {
+        "step": 16548,
+        "epoch": 10.5,
+        "anchor_micro": 0.858038,
+        "arm_micro": 0.844715,
+        "delta_pt": -1.33,
+        "anchor_empty": 0.013834,
+        "arm_empty": 0.007725
+      },
+      {
+        "step": 17336,
+        "epoch": 11.0,
+        "anchor_micro": 0.859975,
+        "arm_micro": 0.846063,
+        "delta_pt": -1.39,
+        "anchor_empty": 0.014822,
+        "arm_empty": 0.007725
+      },
+      {
+        "step": 18124,
+        "epoch": 11.5,
+        "anchor_micro": 0.861649,
+        "arm_micro": 0.847417,
+        "delta_pt": -1.42,
+        "anchor_empty": 0.011049,
+        "arm_empty": 0.007905
+      },
+      {
+        "step": 18912,
+        "epoch": 12.0,
+        "anchor_micro": 0.862346,
+        "arm_micro": 0.84859,
+        "delta_pt": -1.38,
+        "anchor_empty": 0.01087,
+        "arm_empty": 0.005749
+      }
+    ],
+    "mean_delta_first_3ep_pt": -1.0,
+    "mean_delta_after_pt": -1.28,
+    "mean_delta_last_6_pt": -1.4,
+    "n_positive_points": 1
+  },
+  "operating_cells": {
+    "11_01(focal)": {
+      "micro": 0.8588,
+      "tp": 11692,
+      "fp": 2004,
+      "fn": 1842,
+      "fp_cross_lno": 1211,
+      "fp_within_lno": 793
+    },
+    "14_01(MCL)": {
+      "micro": 0.8467,
+      "tp": 11655,
+      "fp": 2340,
+      "fn": 1879,
+      "fp_cross_lno": 1294,
+      "fp_within_lno": 1046
+    },
+    "11_04(seed153)": {
+      "micro": 0.857,
+      "tp": 11662,
+      "fp": 2020,
+      "fn": 1872,
+      "fp_cross_lno": 1232,
+      "fp_within_lno": 788
+    },
+    "BCE": {
+      "micro": 0.8535,
+      "tp": 11557,
+      "fp": 1989,
+      "fn": 1977,
+      "fp_cross_lno": 1212,
+      "fp_within_lno": 777
+    }
+  },
+  "branch_arithmetic": {
+    "bce_base_vs_anchor_pt": -0.53,
+    "bce_base_plus_free_target_micro": 0.8555,
+    "bce_base_plus_free_target_vs_anchor_pt": -0.33,
+    "focal_base_plus_free_target_micro": 0.8608,
+    "focal_base_plus_free_target_vs_anchor_pt": 0.2,
+    "note": "'공짜'는 작동점 일치에서 실측된 표적 효과(cross FP −63)만 얹고 부수 피해(within FP·FN)를 0으로 둔 도달 불가 가정이다. 그 가정에서도 운영 판정선 +0.6pt는 물론 형식 하한 +0.4pt에 못 미친다."
+  }
+}

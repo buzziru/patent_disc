@@ -1,0 +1,17 @@
+{
+  "test": {
+    "test_loss": 0.003649085061624646,
+    "test_micro_f1": 0.8467434341966653,
+    "test_macro_f1": 0.8443232204550342,
+    "test_sample_f1": 0.8685398917656122,
+    "test_empty_rate": 0.0061366061899679825,
+    "test_anchor_weighted_f1": 0.8145348037077924,
+    "test_lno_micro_f1": 0.9074215761285387,
+    "test_lno_macro_f1": 0.9106193689393214,
+    "test_lno_sample_f1": 0.9179861711078359,
+    "test_fp_cross_lno_share": 0.552991452991453,
+    "test_fn_group_missed_share": 0.7605109100585418,
+    "test_fp_per_doc": 0.20811099252934898,
+    "test_fn_per_doc": 0.16711134827463536
+  }
+}
