@@ -2,9 +2,41 @@
 
 > 읽는 순서: `PROJECT.md`(SSOT) → 이 문서. 수치 SSOT는 `output/*.json`, 손실 축은 `docs/experiments/loss-function.md`, 결정 경위는 `docs/adr/`.
 
-## 지금 상태 — KD 축까지 종결, **다음 착수는 배포 모델 확정(8192 최종 런)**
+## 지금 상태 — KD 축까지 종결, **다음 착수는 확신 오답 진단(GPU 0)**
 
-계층 손실에 이어 **KD 축이 착수 전 게이트로 닫혔다**([ADR-0015](docs/adr/0015-kd-closure.md), SSOT [knowledge-distillation.md](docs/experiments/knowledge-distillation.md)「착수 전 게이트 둘」 · `output/kd_transfer_structure.json`·`output/kd_grad_budget.json`). **남은 레버는 모델·레시피뿐이며, 다음 GPU 작업은 정리 데이터 위 8192 최종 런이다**(「다음 작업」 절).
+계층 손실에 이어 **KD 축이 착수 전 게이트로 닫혔다**([ADR-0015](docs/adr/0015-kd-closure.md), SSOT [knowledge-distillation.md](docs/experiments/knowledge-distillation.md)「착수 전 게이트 둘」 · `output/kd_transfer_structure.json`·`output/kd_grad_budget.json`). **남은 레버는 모델·레시피뿐이다.**
+
+진행 중·대기 중인 작업이 둘이다.
+
+1. **확신 오답 진단 — 다음 세션 착수, GPU 0.** 덤프된 로짓 4~6종의 **교차 모델 합의**로 확신 오답 1,500~2,000건의 정체를 가른다(「확신 오답 진단」 절). 성능 레버가 아니라 **산출물의 한계 기술을 정하는 진단**이다.
+2. **8192 최종 런 — GPU 작업.** 선행 진단(LR range test, `notebook/15_01_LRRangeTest.ipynb`)이 집행 단계에 있다(「다음 작업」 절).
+
+## 확신 오답 진단 — 다음 세션 착수
+
+**배경.** 4런 공통으로 val loss가 3~7 epoch에 최저를 찍고 상승하는데 F1은 끝까지 개선한다. 손실 질량 분해가 그 상승의 정체를 규정했다 — 원소 0.1%가 손실의 75~88%, **확신 오답 1,500~2,000건이 73~82%**([training-curves.md](docs/experiments/training-curves.md)).
+
+**먼저 고정할 것 — 이건 캘리브레이션 축이 아니고, val 손실도 표적이 아니다.**
+
+- **전역 과신**(온도·아핀)은 [ADR-0006]으로 닫혔고 τ=0.5에서 **결정 등가**다. 그러나 손실 질량이 잡은 것은 그게 아니라 **특정 문서에서 틀린 라벨이 정답보다 위에 있는 순위 오류**다. 단조 변환으로 고쳐지지 않는다 — 캘리브레이션이 아니라 더 어려운 문제다.
+- **val 손실 상승 자체를 목표로 삼으면 안 된다.** NLL은 strictly proper scoring rule이라 오답 집합이 고정된 상태에서 손실을 낮추는 유일한 길은 **확신을 줄이는 것**이고, 그것은 τ=0.5에서 결정을 하나도 바꾸지 않는다(정의상 micro 델타 0). 손실을 의미 있게 낮추려면 오답을 실제로 고쳐야 하며, 그건 판별력 문제 — **새 축이 아니라 같은 축의 재서술**이다.
+- **훈련 시점 개입(label smoothing·confidence penalty)도 불착수.** ① 188개 독립 시그모이드에서 비대칭 smoothing은 1차 효과가 **클래스별 로짓 천장 = 단조 압축**이라 순위 재배열 힘이 약하다. ② 정규화 논거가 성립하려면 랭킹 과적합이 있어야 하는데 **4런 모두 F1이 끝까지 개선하고 early stopping이 한 번도 발동하지 않았다** — 걷어낼 것이 없다. 손실 축은 [ADR-0009]로 닫혔고 이 둘은 새 근거가 아니라 반대 방향 근거다.
+
+**진단이 답하는 질문**: 그 1,500~2,000건이 **라벨 누락**인가, **본질적 모호성**인가, **모델 고유의 실패**인가.
+
+**방법(전부 덤프된 로짓만, GPU 0)**
+
+- **교차 모델 합의** — exp1(8192) · exp2(512) · `11_01` · KoBERT(다른 토크나이저·아키텍처) · ASL(다른 손실) · `11_04`(시드 쌍둥이)가 **같은 문서에서 같은 오답을 확신**하면 한 모델의 실패가 아니다(→ 누락 또는 모호성). 서로 다른 오답이면 모델 고유 실패다. KD 게이트에서 쌍별 top-1 일치가 0.860~0.877이었으므로 이 분해는 실제로 정보를 낸다.
+- **공기(co-occurrence) 검정** — 확신 FP의 (정답 라벨, 예측 라벨) 쌍이 코퍼스에서 **우연 이상으로 함께 붙는 쌍**이면 그 예측은 오답이 아니라 **누락된 정답**일 가능성이 높다. 다중레이블·사람 라벨링이라 개연성이 있고, [ADR-0010](docs/adr/0010-data-cleaning.md)이 **입력이 완전히 동일한 336문서에서 라벨 충돌을 실측**했다(입력 동일 케이스만 잡은 값이라 **하한**이다).
+- **`Lno` 위치 조건화** — 확신 오답이 정답 `Lno` 안(형제)인지 밖인지. 기존 분해를 확신 밴드로 조건화한다.
+
+**결과가 바꾸는 것**
+
+- **라벨 누락이 지배적이면** — 측정된 micro-F1이 **하향 편향**돼 있고 그만큼의 헤드룸은 애초에 없다. 닫힌 축들의 "회수 불가" 결론에 물리적 근거가 하나 더 붙고, 평탄화 분포와 나란히 **결과의 한계로 병기**한다.
+- **모델 고유 실패가 지배적이면** — 판별력 진단이 재확인되고 레버가 모델·용량 축뿐이라는 현재 결론이 강화된다.
+
+⚠️ **성능 레버가 아니다.** 어느 쪽이 나와도 새 훈련 축을 열지 않는다. 바뀌는 것은 산출물의 서술과 한계 기술이다.
+
+**참고 — 운영 축의 예외**: 확률 보정은 micro-F1에 대해 결정 등가라 닫혔지만, 낮은 확신 문서를 사람 검토로 라우팅하는 **선택적 예측**은 주 지표를 바꾸지 않으므로 [ADR-0006]과 충돌하지 않는다. 성능 축이 아니라 **운영 설계**로 분류한다.
 
 ### KD 축 종결 요약
 
@@ -91,17 +123,19 @@
 
 ## 남은 일
 
-1. **8192 LR range test → 최종 런 — 다음 착수.** 모든 실험 축이 닫혀 남은 GPU 작업은 배포 모델 확정뿐이다(「다음 작업」 절). 순차 샘플러로 로짓 행 순서를 `document_id`에 고정한다(순열 함정).
+1. **확신 오답 진단 — 다음 세션 착수(GPU 0).** 교차 모델 로짓으로 확신 오답의 정체를 가른다(「확신 오답 진단」 절). 성능 레버가 아니라 한계 기술을 정하는 진단이다.
+2. **8192 LR range test → 최종 런 — GPU 작업.** 모든 실험 축이 닫혀 남은 GPU 작업은 배포 모델 확정뿐이다(「다음 작업」 절). 순차 샘플러로 로짓 행 순서를 `document_id`에 고정한다(순열 함정).
    - **재사용 가능한 도구**: `scripts/hierarchy_loss_mass.py`에 `paired_bootstrap`(문서 단위 CI)과 `matched_operating_point`(작동점 정규화), `scripts/hierarchy_loss_grad_budget.py`에 기울기 예산·포화도·순위 국소화(P@1을 `Lno` 축과 조건부 형제 축으로 분해), `scripts/kd_transfer_structure.py`에 여유 밴드 분해·재조정 도달·라우팅 전이·집중도, `scripts/kd_grad_budget.py`에 손실 항별 기울기 몫·축퇴도·신호 국소화·설계 λ가 들어 있다. arm 추가는 상단 `MODELS`/`TAGS` 사전만 손대면 된다.
-2. **오류 부분집합의 관찰 지표 규약은 교정됐다 — 어떤 축이든 절대량·문서당으로 잰다.** `14_01`이 훈련 중 관찰 지표를 share(표적/전체 FP)로 뒀던 것이 결함이었다(「함정」의 share 항목). 교정된 프로토콜은 [hierarchy-loss.md](docs/experiments/hierarchy-loss.md)「프로토콜」에 있고 KD 런에도 그대로 적용한다. `14_01` 노트북은 실행 기록이라 수정하지 않았다.
-3. **`11_01` 로짓은 행 축이 정상이다 — 재덤프 불필요.** `output/logits_modernbert-patent-len512-b128_{val,test}.npy`를 정리 데이터셋 행 순서의 라벨과 대면시키면 test micro/macro/sample이 SSOT(0.858759 / 0.856503 / 0.873791)와 1e-6까지 일치하고 val도 0.8623으로 정상이다(순열이면 ~0.006이 나온다). 정리 로짓의 행 축 SSOT는 `output/doc_ids_clean_{val,test}.json`이며 데이터셋 `document_id` 순서와 일치한다(구 `doc_ids_*`는 구 로짓 재현용 유지, `docs/data/data.md`「주의」). **비교선은 정리 test 재계산값(exp2 0.8599)**이다 — `11_01`은 정리 test(11,244)에서 평가되므로 구 test 수치(0.8601)와 직접 대면 안 된다.
-4. **`11_01`에는 판정할 두 축이 겹쳐 있다** — 데이터 클리닝과 신 레시피가 동시에 바뀐 런이다. 클리닝 효과는 볼륨(train 0.04%)이 작아 aggregate에서 분리되지 않으므로([ADR-0010](docs/adr/0010-data-cleaning.md)), 연루 클래스(특히 EB01) per-class F1을 paired로 대조한다.
-5. **RoBERTa·KoBERT 토큰화본 336 필터 미반영** — `ingyoun/patent-clean-text-roberta-tokenized`·`...-kobert-tokenized`는 정리 이전 상태다. 재토큰화 없이 같은 `document_id`로 필터링하면 되고, KLUE-RoBERTa 대조군이나 KoBERT 재현을 다시 돌릴 때 선행한다.
-6. **KLUE-RoBERTa 대조군**(주장 방어용, 선택 항목 — [klue-roberta.md](docs/experiments/klue-roberta.md)). 예산이 남을 때만 집행한다.
+3. **오류 부분집합의 관찰 지표 규약은 교정됐다 — 어떤 축이든 절대량·문서당으로 잰다.** `14_01`이 훈련 중 관찰 지표를 share(표적/전체 FP)로 뒀던 것이 결함이었다(「함정」의 share 항목). 교정된 프로토콜은 [hierarchy-loss.md](docs/experiments/hierarchy-loss.md)「프로토콜」에 있고 KD 런에도 그대로 적용한다. `14_01` 노트북은 실행 기록이라 수정하지 않았다.
+4. **`11_01` 로짓은 행 축이 정상이다 — 재덤프 불필요.** `output/logits_modernbert-patent-len512-b128_{val,test}.npy`를 정리 데이터셋 행 순서의 라벨과 대면시키면 test micro/macro/sample이 SSOT(0.858759 / 0.856503 / 0.873791)와 1e-6까지 일치하고 val도 0.8623으로 정상이다(순열이면 ~0.006이 나온다). 정리 로짓의 행 축 SSOT는 `output/doc_ids_clean_{val,test}.json`이며 데이터셋 `document_id` 순서와 일치한다(구 `doc_ids_*`는 구 로짓 재현용 유지, `docs/data/data.md`「주의」). **비교선은 정리 test 재계산값(exp2 0.8599)**이다 — `11_01`은 정리 test(11,244)에서 평가되므로 구 test 수치(0.8601)와 직접 대면 안 된다.
+5. **`11_01`에는 판정할 두 축이 겹쳐 있다** — 데이터 클리닝과 신 레시피가 동시에 바뀐 런이다. 클리닝 효과는 볼륨(train 0.04%)이 작아 aggregate에서 분리되지 않으므로([ADR-0010](docs/adr/0010-data-cleaning.md)), 연루 클래스(특히 EB01) per-class F1을 paired로 대조한다.
+6. **RoBERTa·KoBERT 토큰화본 336 필터 미반영** — `ingyoun/patent-clean-text-roberta-tokenized`·`...-kobert-tokenized`는 정리 이전 상태다. 재토큰화 없이 같은 `document_id`로 필터링하면 되고, KLUE-RoBERTa 대조군이나 KoBERT 재현을 다시 돌릴 때 선행한다.
+7. **KLUE-RoBERTa 대조군**(주장 방어용, 선택 항목 — [klue-roberta.md](docs/experiments/klue-roberta.md)). 예산이 남을 때만 집행한다.
 
 ## 함정 (놓치기 쉬움)
 
 - **팟의 `src/patent_train`을 로컬 최신본으로 교체하고 시작한다.** 볼륨·이미지에 남은 구 사본이 그대로 import되면 **로컬에서 고친 코드가 반영되지 않은 채** 런이 돈다. `13_02`가 이 경로로 순열 로짓을 냈다 — `runner.predict_logits`의 행 순서 방어(순차 샘플러 복원 + 반환 라벨 assert)는 로컬에 이미 들어와 있었으나 팟 사본이 구본이었다. 런 초반에 `patent_train.__file__`과 방어 코드 존재를 찍어 확인한다(`11_03` 3번 셀 방식).
+- **`probe_batches`는 GPU에 올린 모델을 받는다.** `load_model()` 직후 모델은 CPU에 있고(`from_pretrained`는 옮기지 않는다), `Trainer`가 `train()` 시작 시 옮겨 주므로 `build_trainer()` 앞에서 프로브를 부르면 CPU 텐서가 flash-attn에 들어가 `NotImplementedError: Could not run 'flash_attn::_flash_attn_forward' ... 'CPU' backend`로 죽는다. `torch.autocast("cuda", …)`는 캐스팅 정책만 정할 뿐 텐서를 옮기지 않는다. 호출 전에 `runner.model.to("cuda")`를 둔다(이미 GPU면 무연산, 이후 `Trainer`의 이동도 무연산). 프로브 뒤 상태는 안전하다 — `probe.py`가 `del opt`·`zero_grad`·`empty_cache`·`reset_peak_memory_stats`로 정리하고 `lr=0.0`이라 가중치도 불변이다.
 - **스케줄 길이가 다른 런을 에폭 눈금으로 비교하지 않는다.** `linear`+`warmup_ratio=0.1`은 총 스텝에 비례한다 — 2 epoch 탐색 런은 0.2 epoch에 피크 lr을 지나 곧바로 어닐링에 들어가고, 12 epoch 풀런은 1.2 epoch까지 워밍업 중이다. 같은 "1 epoch"이 lr 궤적에서 전혀 다른 자리이며, 조기 곡선 대조는 **12 epoch 런끼리** 한다.
 - **`prep_cache`는 `{backbone}_len{max_len}`으로만 키잉된다.** 데이터셋 버전이 바뀌어도 볼륨에 캐시가 남아 있으면 원본 다운로드를 건너뛰어 **구 데이터로 학습된다.** 데이터셋을 갱신했으면 `/workspace/prep_cache/*`를 지우고 시작하고, `[schedule]` 출력의 step/epoch로 행 수를 역산해 확인한다(정리 데이터 = 1,576 step/epoch @ eff128).
 - **정리 test(11,244)와 구 test(11,271)는 다른 셋이다.** 서로 다른 test에서 잰 micro를 나란히 놓지 않는다.
