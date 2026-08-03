@@ -1,0 +1,515 @@
+{
+  "question": "확신 오답의 두 극단(전원 동조 5/5 · 앵커 단독 0/5)은 클래스 축에서 어떤 모양인가.",
+  "axis": {
+    "split": "test",
+    "n_docs": 11244,
+    "n_labels": 188,
+    "confident_band": [
+      0.1,
+      0.9
+    ],
+    "tau": 0.5,
+    "models": {
+      "11_01": "modernbert-patent-len512-b128",
+      "11_04": "modernbert-patent-seed153",
+      "exp2": "modernbert-patent-len512",
+      "exp1": "modernbert-patent-len8192",
+      "ASL": "modernbert-patent-len512-asl",
+      "KoBERT": "kobert-patent-baseline_len512"
+    },
+    "anchor": "11_01"
+  },
+  "script": "scripts/confident_error_classes.py",
+  "pair_attribution": "확신 FP의 (정답, 예측) 쌍은 문서의 정답 라벨 중 lift가 최대인 것에 귀속한다.",
+  "universal_fp_pairs": {
+    "n_elements": 419,
+    "n_distinct_pairs": 329,
+    "top10_share": 0.1074,
+    "same_lno_share": 0.4081,
+    "top_pairs": [
+      {
+        "gold": "LC11",
+        "predicted": "LB17",
+        "n": 6,
+        "lift": 26.17,
+        "same_lno": false,
+        "cooccur_docs_train": 212,
+        "reverse_n": 1,
+        "gold_in_conflict_groups": 0,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "EA13",
+        "predicted": "EE05",
+        "n": 5,
+        "lift": 62.05,
+        "same_lno": false,
+        "cooccur_docs_train": 676,
+        "reverse_n": 1,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "ND07",
+        "predicted": "ND02",
+        "n": 5,
+        "lift": 43.72,
+        "same_lno": true,
+        "cooccur_docs_train": 459,
+        "reverse_n": 0,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "ND02",
+        "predicted": "EF04",
+        "n": 5,
+        "lift": 1.82,
+        "same_lno": false,
+        "cooccur_docs_train": 20,
+        "reverse_n": 0,
+        "gold_in_conflict_groups": 0,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "ND13",
+        "predicted": "EA13",
+        "n": 5,
+        "lift": 22.22,
+        "same_lno": false,
+        "cooccur_docs_train": 143,
+        "reverse_n": 0,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 1
+      },
+      {
+        "gold": "EA14",
+        "predicted": "EE13",
+        "n": 4,
+        "lift": 46.15,
+        "same_lno": false,
+        "cooccur_docs_train": 551,
+        "reverse_n": 2,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "ED06",
+        "predicted": "EE08",
+        "n": 4,
+        "lift": 29.15,
+        "same_lno": false,
+        "cooccur_docs_train": 248,
+        "reverse_n": 0,
+        "gold_in_conflict_groups": 0,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "EI01",
+        "predicted": "EI05",
+        "n": 4,
+        "lift": 13.85,
+        "same_lno": true,
+        "cooccur_docs_train": 106,
+        "reverse_n": 0,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 1
+      },
+      {
+        "gold": "LB04",
+        "predicted": "LB03",
+        "n": 4,
+        "lift": 27.86,
+        "same_lno": true,
+        "cooccur_docs_train": 256,
+        "reverse_n": 1,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "EA09",
+        "predicted": "EI06",
+        "n": 3,
+        "lift": 6.29,
+        "same_lno": false,
+        "cooccur_docs_train": 62,
+        "reverse_n": 0,
+        "gold_in_conflict_groups": 0,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "EA10",
+        "predicted": "EH06",
+        "n": 3,
+        "lift": 31.35,
+        "same_lno": false,
+        "cooccur_docs_train": 319,
+        "reverse_n": 1,
+        "gold_in_conflict_groups": 2,
+        "pred_in_conflict_groups": 1
+      },
+      {
+        "gold": "EA10",
+        "predicted": "EI08",
+        "n": 3,
+        "lift": 30.95,
+        "same_lno": false,
+        "cooccur_docs_train": 281,
+        "reverse_n": 3,
+        "gold_in_conflict_groups": 2,
+        "pred_in_conflict_groups": 1
+      },
+      {
+        "gold": "EI08",
+        "predicted": "EA10",
+        "n": 3,
+        "lift": 30.95,
+        "same_lno": false,
+        "cooccur_docs_train": 281,
+        "reverse_n": 3,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 2
+      },
+      {
+        "gold": "EG08",
+        "predicted": "EG09",
+        "n": 3,
+        "lift": 63.67,
+        "same_lno": true,
+        "cooccur_docs_train": 430,
+        "reverse_n": 1,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 0
+      },
+      {
+        "gold": "EG06",
+        "predicted": "EG05",
+        "n": 3,
+        "lift": 60.14,
+        "same_lno": true,
+        "cooccur_docs_train": 445,
+        "reverse_n": 1,
+        "gold_in_conflict_groups": 1,
+        "pred_in_conflict_groups": 1
+      }
+    ]
+  },
+  "universal_fn_labels": {
+    "n_elements": 465,
+    "n_distinct_labels": 140,
+    "top10_share": 0.1978,
+    "top_labels": [
+      {
+        "label": "EI04",
+        "n": 14,
+        "test_support": 79,
+        "share_of_class_positives": 0.1772,
+        "test_recall": 0.6456,
+        "train_support": 1423,
+        "median_lift_to_sibling_gold": 2.95,
+        "n_k1_docs": 7,
+        "in_conflict_groups": 1
+      },
+      {
+        "label": "LC11",
+        "n": 13,
+        "test_support": 73,
+        "share_of_class_positives": 0.1781,
+        "test_recall": 0.6438,
+        "train_support": 1314,
+        "median_lift_to_sibling_gold": 25.01,
+        "n_k1_docs": 3,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "ED07",
+        "n": 10,
+        "test_support": 73,
+        "share_of_class_positives": 0.137,
+        "test_recall": 0.7123,
+        "train_support": 1308,
+        "median_lift_to_sibling_gold": 3.57,
+        "n_k1_docs": 4,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "EB08",
+        "n": 10,
+        "test_support": 67,
+        "share_of_class_positives": 0.1493,
+        "test_recall": 0.6418,
+        "train_support": 1204,
+        "median_lift_to_sibling_gold": 0.75,
+        "n_k1_docs": 4,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "ND14",
+        "n": 9,
+        "test_support": 49,
+        "share_of_class_positives": 0.1837,
+        "test_recall": 0.551,
+        "train_support": 873,
+        "median_lift_to_sibling_gold": 7.21,
+        "n_k1_docs": 4,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "OB01",
+        "n": 8,
+        "test_support": 73,
+        "share_of_class_positives": 0.1096,
+        "test_recall": 0.7808,
+        "train_support": 1302,
+        "median_lift_to_sibling_gold": 14.64,
+        "n_k1_docs": 3,
+        "in_conflict_groups": 1
+      },
+      {
+        "label": "ND13",
+        "n": 7,
+        "test_support": 45,
+        "share_of_class_positives": 0.1556,
+        "test_recall": 0.6222,
+        "train_support": 810,
+        "median_lift_to_sibling_gold": 22.22,
+        "n_k1_docs": 2,
+        "in_conflict_groups": 1
+      },
+      {
+        "label": "ED11",
+        "n": 7,
+        "test_support": 73,
+        "share_of_class_positives": 0.0959,
+        "test_recall": 0.7671,
+        "train_support": 1312,
+        "median_lift_to_sibling_gold": 2.74,
+        "n_k1_docs": 2,
+        "in_conflict_groups": 1
+      },
+      {
+        "label": "NB03",
+        "n": 7,
+        "test_support": 48,
+        "share_of_class_positives": 0.1458,
+        "test_recall": 0.7083,
+        "train_support": 865,
+        "median_lift_to_sibling_gold": 14.07,
+        "n_k1_docs": 2,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "NB09",
+        "n": 7,
+        "test_support": 77,
+        "share_of_class_positives": 0.0909,
+        "test_recall": 0.7792,
+        "train_support": 1394,
+        "median_lift_to_sibling_gold": 9.18,
+        "n_k1_docs": 3,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "LB09",
+        "n": 7,
+        "test_support": 65,
+        "share_of_class_positives": 0.1077,
+        "test_recall": 0.7846,
+        "train_support": 1170,
+        "median_lift_to_sibling_gold": 0.7,
+        "n_k1_docs": 2,
+        "in_conflict_groups": 1
+      },
+      {
+        "label": "OA02",
+        "n": 7,
+        "test_support": 68,
+        "share_of_class_positives": 0.1029,
+        "test_recall": 0.7941,
+        "train_support": 1225,
+        "median_lift_to_sibling_gold": 13.83,
+        "n_k1_docs": 5,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "EI07",
+        "n": 6,
+        "test_support": 78,
+        "share_of_class_positives": 0.0769,
+        "test_recall": 0.7821,
+        "train_support": 1404,
+        "median_lift_to_sibling_gold": 24.79,
+        "n_k1_docs": 2,
+        "in_conflict_groups": 1
+      },
+      {
+        "label": "EA07",
+        "n": 6,
+        "test_support": 87,
+        "share_of_class_positives": 0.069,
+        "test_recall": 0.7931,
+        "train_support": 1560,
+        "median_lift_to_sibling_gold": 5.8,
+        "n_k1_docs": 3,
+        "in_conflict_groups": 0
+      },
+      {
+        "label": "EH06",
+        "n": 6,
+        "test_support": 83,
+        "share_of_class_positives": 0.0723,
+        "test_recall": 0.759,
+        "train_support": 1475,
+        "median_lift_to_sibling_gold": 25.07,
+        "n_k1_docs": 2,
+        "in_conflict_groups": 1
+      }
+    ]
+  },
+  "anchor_solo": {
+    "n": 24,
+    "fp": 11,
+    "fn": 13,
+    "twin_correct_share": 1.0,
+    "twin_confident_correct_share": 0.7083,
+    "median_anchor_p": 0.0988,
+    "median_twin_p": 0.629,
+    "mass_share_of_confident": 0.0124,
+    "examples": [
+      {
+        "document_id": "kr20210003287b1",
+        "label": "EE05",
+        "gold": true,
+        "anchor_p": 0.0481,
+        "11_04": 0.8459,
+        "exp2": 0.9442,
+        "exp1": 0.9809,
+        "ASL": 0.6379,
+        "KoBERT": 0.7526
+      },
+      {
+        "document_id": "kr20187030452b1",
+        "label": "EB02",
+        "gold": true,
+        "anchor_p": 0.0113,
+        "11_04": 0.6984,
+        "exp2": 0.8933,
+        "exp1": 0.9504,
+        "ASL": 0.6901,
+        "KoBERT": 0.9396
+      },
+      {
+        "document_id": "kr20227002984a",
+        "label": "EA01",
+        "gold": false,
+        "anchor_p": 0.9219,
+        "11_04": 0.0726,
+        "exp2": 0.0006,
+        "exp1": 0.0001,
+        "ASL": 0.0141,
+        "KoBERT": 0.241
+      },
+      {
+        "document_id": "kr20200047487a",
+        "label": "EB08",
+        "gold": true,
+        "anchor_p": 0.0981,
+        "11_04": 0.8105,
+        "exp2": 0.7146,
+        "exp1": 0.9931,
+        "ASL": 0.9876,
+        "KoBERT": 0.6731
+      },
+      {
+        "document_id": "kr20160116235b1",
+        "label": "ED03",
+        "gold": true,
+        "anchor_p": 0.0518,
+        "11_04": 0.5595,
+        "exp2": 0.9924,
+        "exp1": 0.9883,
+        "ASL": 0.9893,
+        "KoBERT": 0.8578
+      },
+      {
+        "document_id": "kr20140041212b1",
+        "label": "EB08",
+        "gold": false,
+        "anchor_p": 0.906,
+        "11_04": 0.0804,
+        "exp2": 0.0804,
+        "exp1": 0.0321,
+        "ASL": 0.3065,
+        "KoBERT": 0.3769
+      },
+      {
+        "document_id": "kr20000077630b1",
+        "label": "EE02",
+        "gold": false,
+        "anchor_p": 0.9592,
+        "11_04": 0.2465,
+        "exp2": 0.0021,
+        "exp1": 0.0307,
+        "ASL": 0.0006,
+        "KoBERT": 0.1647
+      },
+      {
+        "document_id": "kr20070108283b1",
+        "label": "EE06",
+        "gold": false,
+        "anchor_p": 0.9526,
+        "11_04": 0.0575,
+        "exp2": 0.0839,
+        "exp1": 0.0028,
+        "ASL": 0.0408,
+        "KoBERT": 0.2341
+      },
+      {
+        "document_id": "kr20117012109b1",
+        "label": "EE07",
+        "gold": true,
+        "anchor_p": 0.0511,
+        "11_04": 0.9973,
+        "exp2": 0.8105,
+        "exp1": 0.9504,
+        "ASL": 0.9974,
+        "KoBERT": 0.9493
+      },
+      {
+        "document_id": "kr20147013049b1",
+        "label": "EE07",
+        "gold": true,
+        "anchor_p": 0.0967,
+        "11_04": 0.9935,
+        "exp2": 0.9702,
+        "exp1": 0.5513,
+        "ASL": 0.9999,
+        "KoBERT": 0.9474
+      }
+    ],
+    "note": "앵커만 확신을 갖고 틀린 원소. 시드 쌍둥이(11_04)가 맞히면 재현되지 않는 개별 런의 흔들림이며, 모델 계열의 성질이 아니다."
+  },
+  "cleaning_overlap": {
+    "n_labels_in_conflict_groups": 74,
+    "base_rate_test_positives": 0.3922,
+    "share_uni_fn_in_conflict_labels": 0.4237,
+    "enrichment_fn": 1.08,
+    "share_uni_fp_pred_in_conflict_labels": 0.4296,
+    "enrichment_fp": 1.1,
+    "EA04": {
+      "in_conflict_groups": 0,
+      "as_disputed_label": 0,
+      "groups": [],
+      "uni_fn_elements": 1,
+      "test_support": 69,
+      "train_support": 1230,
+      "test_recall": 0.8551
+    },
+    "note": "[ADR-0010]의 제거는 **입력이 완전히 동일한** 케이스만 잡은 하한이다. 같은 클래스의 잔여 충돌이 test에 남아 있다면 확신 오답이 그 클래스에 몰려야 한다."
+  },
+  "relabel_candidates": {
+    "path": "output/relabel_candidates.csv",
+    "n_rows": 884,
+    "n_docs": 752
+  }
+}

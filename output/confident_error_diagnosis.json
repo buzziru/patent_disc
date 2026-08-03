@@ -1,0 +1,403 @@
+{
+  "question": "손실 질량의 73~82%를 무는 확신 오답 1,500~2,000개는 라벨 누락인가, 본질적 모호성인가, 모델 고유의 실패인가.",
+  "axis": {
+    "split": "test",
+    "n_docs": 11244,
+    "n_labels": 188,
+    "n_positive": 13534,
+    "tau": 0.5,
+    "confident_band": [
+      0.1,
+      0.9
+    ],
+    "n_train_docs": 201616
+  },
+  "models": {
+    "11_01": "modernbert-patent-len512-b128",
+    "11_04": "modernbert-patent-seed153",
+    "exp2": "modernbert-patent-len512",
+    "exp1": "modernbert-patent-len8192",
+    "ASL": "modernbert-patent-len512-asl",
+    "KoBERT": "kobert-patent-baseline_len512"
+  },
+  "anchor": "11_01",
+  "script": "scripts/confident_error_diagnosis.py",
+  "verify": "앵커 확신 오답 개수 == output/loss_mass_decomposition.json · 로짓 행 축 == output/doc_ids_clean_test.json",
+  "consensus": {
+    "definition": "확신 오답 = 양성 p<0.1 · 음성 p>0.9. 동조 = τ=0.5에서 같은 원소를 같은 방향으로 틀림(결정축 — ASL 스케일 무관).",
+    "anchor": "11_01",
+    "confident_errors": {
+      "n": 1461,
+      "per_model_agree": {
+        "11_04": 0.8631,
+        "exp2": 0.8665,
+        "exp1": 0.8138,
+        "ASL": 0.835,
+        "KoBERT": 0.8166
+      },
+      "per_model_agree_confident": {
+        "11_04": 0.6167,
+        "exp2": 0.6886,
+        "exp1": 0.6311,
+        "ASL": 0.588,
+        "KoBERT": 0.2704
+      },
+      "n_agree_hist": {
+        "0": 24,
+        "1": 63,
+        "2": 91,
+        "3": 132,
+        "4": 267,
+        "5": 884
+      },
+      "mean_n_agree": 4.195,
+      "unique_share": 0.0164,
+      "universal_share": 0.6051
+    },
+    "confident_fp": {
+      "n": 683,
+      "per_model_agree": {
+        "11_04": 0.8448,
+        "exp2": 0.8433,
+        "exp1": 0.8228,
+        "ASL": 0.8785,
+        "KoBERT": 0.7848
+      },
+      "per_model_agree_confident": {
+        "11_04": 0.5695,
+        "exp2": 0.6442,
+        "exp1": 0.6223,
+        "ASL": 0.7628,
+        "KoBERT": 0.1596
+      },
+      "n_agree_hist": {
+        "0": 11,
+        "1": 32,
+        "2": 49,
+        "3": 62,
+        "4": 110,
+        "5": 419
+      },
+      "mean_n_agree": 4.174,
+      "unique_share": 0.0161,
+      "universal_share": 0.6135
+    },
+    "confident_fn": {
+      "n": 778,
+      "per_model_agree": {
+        "11_04": 0.8792,
+        "exp2": 0.8869,
+        "exp1": 0.8059,
+        "ASL": 0.7969,
+        "KoBERT": 0.8445
+      },
+      "per_model_agree_confident": {
+        "11_04": 0.6581,
+        "exp2": 0.7275,
+        "exp1": 0.6388,
+        "ASL": 0.4344,
+        "KoBERT": 0.3676
+      },
+      "n_agree_hist": {
+        "0": 13,
+        "1": 31,
+        "2": 42,
+        "3": 70,
+        "4": 157,
+        "5": 465
+      },
+      "mean_n_agree": 4.213,
+      "unique_share": 0.0167,
+      "universal_share": 0.5977
+    },
+    "borderline_errors": {
+      "n": 2385,
+      "per_model_agree": {
+        "11_04": 0.5585,
+        "exp2": 0.5606,
+        "exp1": 0.5367,
+        "ASL": 0.5493,
+        "KoBERT": 0.5388
+      },
+      "per_model_agree_confident": {
+        "11_04": 0.1593,
+        "exp2": 0.2264,
+        "exp1": 0.2377,
+        "ASL": 0.2373,
+        "KoBERT": 0.0365
+      },
+      "n_agree_hist": {
+        "0": 342,
+        "1": 346,
+        "2": 365,
+        "3": 364,
+        "4": 464,
+        "5": 504
+      },
+      "mean_n_agree": 2.744,
+      "unique_share": 0.1434,
+      "universal_share": 0.2113
+    },
+    "reference_correct_elements": {
+      "n": 2110026,
+      "per_model_agree": {
+        "11_04": 0.00062,
+        "exp2": 0.00057,
+        "exp1": 0.00052,
+        "ASL": 0.00104,
+        "KoBERT": 0.00076
+      },
+      "note": "앵커가 맞힌 원소에서 다른 런이 틀린 비율 — 원소 축의 기저 불일치율."
+    },
+    "ladder_note": "11_04(시드만 다름) → exp2·exp1(같은 아키텍처) → ASL(다른 손실) → KoBERT(다른 아키텍처·토크나이저). 사다리를 내려가도 동조율이 유지되면 그 오답은 모델이 아니라 데이터가 정한 것이다."
+  },
+  "cooccurrence": {
+    "definition": "lift = P(a,b)/(P(a)P(b)) — train 201,616문서 기준. 1.0이 우연 수준. 확신 FP의 lift는 (문서의 정답 라벨, 확신 예측 라벨) 쌍의 최댓값이다.",
+    "confound_note": "lift가 높다는 것만으로 '누락된 정답'이 되지는 않는다 — 모델이 코퍼스의 공기 구조를 학습했으므로 그냥 틀린 예측도 lift가 높다(경계 FP가 그 대조군). 판정력은 두 곳에서 나온다: (1) 합의 여부로 가른 분포 차이, (2) 입력 동일 라벨 충돌 42그룹(ADR-0010)이라는 실측 잡음 표본과의 대면.",
+    "floor_q90_threshold": 0.539,
+    "distributions": [
+      {
+        "set": "바닥 — 무작위 비정답 라벨",
+        "n": 3360,
+        "median_lift": 0.0,
+        "mean_lift": 0.447,
+        "share_above_floor_q90": 0.1,
+        "share_lift_ge_5": 0.0179,
+        "share_never_cooccur": 0.6753
+      },
+      {
+        "set": "경계 FP(확신 아님)",
+        "n": 1321,
+        "median_lift": 3.789,
+        "mean_lift": 13.936,
+        "share_above_floor_q90": 0.7812,
+        "share_lift_ge_5": 0.464,
+        "share_never_cooccur": 0.0749
+      },
+      {
+        "set": "확신 FP",
+        "n": 683,
+        "median_lift": 4.281,
+        "mean_lift": 12.544,
+        "share_above_floor_q90": 0.7496,
+        "share_lift_ge_5": 0.4788,
+        "share_never_cooccur": 0.0835
+      },
+      {
+        "set": "확신 FP · 6런 전원 동조",
+        "n": 419,
+        "median_lift": 6.619,
+        "mean_lift": 15.312,
+        "share_above_floor_q90": 0.8115,
+        "share_lift_ge_5": 0.5561,
+        "share_never_cooccur": 0.0477
+      },
+      {
+        "set": "확신 FP · 앵커 단독",
+        "n": 11,
+        "median_lift": 0.522,
+        "mean_lift": 1.885,
+        "share_above_floor_q90": 0.4545,
+        "share_lift_ge_5": 0.1818,
+        "share_never_cooccur": 0.1818
+      },
+      {
+        "set": "실측 잡음 — 입력 동일 라벨 충돌(ADR-0010)",
+        "n": 72,
+        "median_lift": 5.558,
+        "mean_lift": 16.01,
+        "share_above_floor_q90": 0.8889,
+        "share_lift_ge_5": 0.5139,
+        "share_never_cooccur": 0.0556
+      },
+      {
+        "set": "천장 — 실제 정답끼리(k>=2)",
+        "n": 3979,
+        "median_lift": 16.507,
+        "mean_lift": 24.258,
+        "share_above_floor_q90": 0.9065,
+        "share_lift_ge_5": 0.6783,
+        "share_never_cooccur": 0.0214
+      }
+    ],
+    "fn_matched_within_k2": {
+      "확신 FN": {
+        "set": "확신 FN",
+        "n": 414,
+        "median_lift": 3.568,
+        "mean_lift": 11.306,
+        "share_above_floor_q90": 0.8068,
+        "share_lift_ge_5": 0.442,
+        "share_never_cooccur": 0.0507
+      },
+      "경계 FN": {
+        "set": "경계 FN",
+        "n": 685,
+        "median_lift": 12.982,
+        "mean_lift": 22.381,
+        "share_above_floor_q90": 0.8905,
+        "share_lift_ge_5": 0.6496,
+        "share_never_cooccur": 0.0336
+      },
+      "맞힌 정답": {
+        "set": "맞힌 정답",
+        "n": 2880,
+        "median_lift": 19.107,
+        "mean_lift": 26.567,
+        "share_above_floor_q90": 0.9247,
+        "share_lift_ge_5": 0.7191,
+        "share_never_cooccur": 0.0142
+      },
+      "note": "같은 k>=2 모집단에서 정답 라벨이 같은 문서의 다른 정답과 붙는 정도. 확신 FN이 맞힌 정답보다 크게 낮으면 그 라벨은 문서의 나머지와 겉도는 이질 라벨 = 오부착 후보다."
+    },
+    "realized_combination": {
+      "conf_fp_gold_plus_pred_in_train": 0.8302,
+      "conf_fp_gold_set_in_train": 0.9702,
+      "note": "정답 집합에 확신 예측 라벨을 더한 조합이 train에 실제로 존재하는 비율. 대조는 그 문서들의 정답 집합 자체가 train에 존재하는 비율."
+    },
+    "confident_fn_shape": {
+      "n_total": 778,
+      "n_k1_docs": 364,
+      "n_k2_docs": 414,
+      "note": "k=1 문서의 확신 FN은 문서 안에 대조할 다른 정답이 없어 공기 검정 밖이다."
+    }
+  },
+  "conditioning": {
+    "lno_position": {
+      "전체 FP": {
+        "n": 2004,
+        "within_gold_lno": 0.3957
+      },
+      "확신 FP": {
+        "n": 683,
+        "within_gold_lno": 0.388
+      },
+      "전체 FN": {
+        "n": 1842,
+        "within_pred_lno": 0.3768
+      },
+      "확신 FN": {
+        "n": 778,
+        "within_pred_lno": 0.3316
+      },
+      "note": "FP는 예측 라벨이 정답 Lno 안(형제)인지, FN은 놓친 정답이 예측 Lno 안인지."
+    },
+    "by_cardinality": {
+      "k=1": {
+        "n_docs": 9555,
+        "conf_err_per_doc": 0.1001
+      },
+      "k=2+": {
+        "n_docs": 1689,
+        "conf_err_per_doc": 0.299
+      }
+    },
+    "by_length_bin": {
+      "1024-2048": {
+        "n_docs": 2336,
+        "conf_err_per_doc": 0.1768
+      },
+      "512-1024": {
+        "n_docs": 5172,
+        "conf_err_per_doc": 0.1135
+      },
+      "<=512": {
+        "n_docs": 3187,
+        "conf_err_per_doc": 0.1114
+      },
+      ">2048": {
+        "n_docs": 549,
+        "conf_err_per_doc": 0.1931
+      }
+    },
+    "doc_concentration": {
+      "n_docs_with_conf_err": 1161,
+      "share_of_docs": 0.1033,
+      "max_per_doc": 3,
+      "note": "확신 오답 원소가 몇 문서에 몰려 있는가."
+    }
+  },
+  "focal_attribution": {
+    "11_01(focal·신 레시피)": {
+      "n_confident_errors": 1461,
+      "mass_share_of_focal_loss": 0.7268,
+      "pos_saturation_ge_0.9": 0.7087
+    },
+    "BCE(γ 제거·같은 레시피)": {
+      "n_confident_errors": 2553,
+      "mass_share_of_focal_loss": 0.916,
+      "pos_saturation_ge_0.9": 0.7845
+    },
+    "exp2(focal·구 레시피)": {
+      "n_confident_errors": 1827,
+      "mass_share_of_focal_loss": 0.8067,
+      "pos_saturation_ge_0.9": 0.7485
+    },
+    "overlap(11_01 ∩ BCE)": {
+      "n_intersection": 1100,
+      "jaccard": 0.3775,
+      "share_of_11_01": 0.7529
+    },
+    "note": "BCE 런은 eff128/lr4.8e-4로 `11_01`과 레시피가 같고 γ·α만 없다. 다만 구 데이터 훈련이라 데이터 축이 0.14%(336문서)만큼 겹치지 않는다 — 구 레시피 focal(exp2)을 함께 놓아 괄호를 친다. 집합이 크게 겹치면 확신 오답은 손실이 만든 것이 아니다."
+  },
+  "verdict": {
+    "FP · 모델 고유 실패(합의 없음)": {
+      "n": 92,
+      "mass_share_of_all_confident": 0.0507
+    },
+    "FP · 합의 + 공기 높음(라벨 누락 후보)": {
+      "n": 459,
+      "mass_share_of_all_confident": 0.2914
+    },
+    "FP · 합의 + 공기 낮음(본질적 모호성)": {
+      "n": 132,
+      "mass_share_of_all_confident": 0.0894
+    },
+    "FN · 모델 고유 실패(합의 없음)": {
+      "n": 25,
+      "mass_share_of_all_confident": 0.0128
+    },
+    "FN · 합의 + 공기 없음(오부착 후보)": {
+      "n": 77,
+      "mass_share_of_all_confident": 0.0612
+    },
+    "FN · 합의 + 공기 있음(본질적 난이도)": {
+      "n": 312,
+      "mass_share_of_all_confident": 0.2085
+    },
+    "FN · k=1 문서(공기 검정 밖)": {
+      "n": 364,
+      "mass_share_of_all_confident": 0.286,
+      "agree_ge_consensus": 0.8324
+    },
+    "_totals": {
+      "n_confident_errors": 1461,
+      "confident_mass_share_of_total_loss": 0.7268,
+      "consensus_rule": "5런 중 3런 이상 동조",
+      "cooccurrence_rule": "lift 판정선 = 바닥 90분위 0.54",
+      "fn_soft_rule_ref": {
+        "hit_gold_median_lift": 19.107,
+        "conf_fn_below_hit_median": 0.7778
+      }
+    }
+  },
+  "measurement_bias": {
+    "11_01": {
+      "micro_measured": 0.8588,
+      "micro_noise_adjusted": 0.8801,
+      "bias_pt": 2.14
+    },
+    "exp1": {
+      "micro_measured": 0.8683,
+      "micro_noise_adjusted": 0.8863,
+      "bias_pt": 1.8
+    },
+    "_scope": {
+      "n_missing_label_candidates": 459,
+      "n_spurious_label_candidates": 77,
+      "n_docs_touched": 517,
+      "share_of_test_docs": 0.046,
+      "note": "후보가 전부 실제 잡음이라는 가정 하의 가정적 값이다. 확신 밴드 밖(경계 오답)의 잡음은 포함되지 않으므로 상한도 하한도 아니다 — 편향의 규모 감각을 주는 값이다. 잡음 조정 라벨로 학습·평가를 다시 하지 않는다(정답 재작성 아님)."
+    }
+  }
+}
