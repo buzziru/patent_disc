@@ -5,7 +5,8 @@
     from patent_train import TrainingRunner, TrainConfig, build_loss, LOSSES, probe_batches
 
 관심사별 모듈: config(레시피 설정)·backbones(인코더+데이터셋 레지스트리)·data(로드·절단·collator)·
-model(팩토리)·losses(레지스트리)·metrics(F1)·trainer(손실 주입)·runner(파사드)·probe(OOM)·env(시드·환경).
+model(팩토리)·losses(레지스트리)·metrics(F1)·trainer(손실 주입)·runner(파사드)·probe(OOM)·
+lr_range(발산 임계 진단)·env(시드·환경).
 손실 축은 ADR-0009로 닫혔고 남은 레버는 모델·레시피 — 백본 교체(레지스트리 키)와 config 주입만으로 변형한다.
 """
 
@@ -18,6 +19,7 @@ from .data import PatentData, MultiLabelCollator
 from .trainer import LossTrainer
 from .runner import TrainingRunner
 from .probe import probe_batches
+from .lr_range import run_lr_range_test, compare as compare_lr_range, LrRangeResult
 from .env import set_seed, setup_env
 
 __all__ = [
@@ -38,6 +40,9 @@ __all__ = [
     "MultiLabelCollator",
     "LossTrainer",
     "probe_batches",
+    "run_lr_range_test",
+    "compare_lr_range",
+    "LrRangeResult",
     "set_seed",
     "setup_env",
 ]
