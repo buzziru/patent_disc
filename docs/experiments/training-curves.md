@@ -6,6 +6,7 @@
 
 - 곡선 원본: `notebook_output/03_01_Baseline_Train_KoBERT_colab_output.ipynb` · `04_02_ModernBERT_MaxLen_output.ipynb` · `05_01_ModernBERT_Len512_output.ipynb` · `11_01_CleanData_Recipe.ipynb`
 - 분해 실측 SSOT: `scripts/loss_mass_decomposition.py` → `output/loss_mass_decomposition.json`
+- 기호·용어·런 코드 → [GLOSSARY.md](../GLOSSARY.md)
 
 ## 공통 조건
 
@@ -18,7 +19,7 @@
 | eval 주기 | 1 epoch (12회) | 0.5 epoch (24회) | 0.5 epoch (24회) | 0.5 epoch (24회) |
 | 데이터 | 구 split (201,895 / 11,162 / 11,271) | 동일 | 동일 | 정리 split (201,616 / 11,132 / 11,244) |
 
-네 런 모두 sigmoid + focal(α=0.25, γ=2) · 188-way 다중레이블 · 12 epoch · linear 스케줄 · warmup_ratio 0.1 · weight_decay 0.01 · `classifier_dropout` 0.5다. 지표 세트는 갈린다 — KoBERT는 top-1 기반(Weighted F1), A.X 계열은 다중레이블 기반(Micro/Macro/Sample F1 · Empty Rate) + 비교 앵커(top-1 Anchor Weighted F1). **KoBERT ↔ A.X 비교는 Anchor Weighted F1 ↔ KoBERT Weighted F1로만** 한다.
+네 런 모두 sigmoid + focal(α=0.25, γ=2) · 188-way 다중레이블 · 12 epoch · linear 스케줄 · warmup_ratio 0.1 · weight_decay 0.01 · `classifier_dropout` 0.5다. 지표 세트는 갈린다 — KoBERT는 top-1 기반(Weighted F1), A.X 계열은 다중레이블 기반(Micro/Macro/Sample F1 · Empty Rate) + 비교 기준 런(top-1 Anchor Weighted F1). **KoBERT ↔ A.X 비교는 Anchor Weighted F1 ↔ KoBERT Weighted F1로만** 한다.
 
 ## 현상 — 네 런 공통
 
@@ -125,8 +126,8 @@ A.X 계열은 12 epoch 뒤 출력이 사실상 이진값이다. **sigmoid 출력
 
 **확률의 의미가 사라진다.** 12 epoch 모델은 양성의 70~77%가 p≥0.9다. [ADR-0006](../adr/0006-no-calibration.md)으로 캘리브레이션 축이 닫혀 있어 주 지표에는 영향이 없지만, **확률값을 소비하는 하류에는 영향이 있다.** [ADR-0004](../adr/0004-threshold-policy.md)가 "train 로짓으로 τ를 튜닝하면 과신 때문에 test로 전이되지 않는다"고 기록한 것과 같은 기제이며, KD의 soft target 품질도 여기에 걸린다([knowledge-distillation.md](knowledge-distillation.md) 「teacher 포화」).
 
-**소수의 확신 오답이 성능 상한을 만든다.** 손실 질량의 73~82%를 무는 1,500~2,000개 원소는 모델이 확신을 갖고 틀린 지점이다. 그 집합의 정체는 [confident-errors.md](confident-errors.md)가 규정했다([ADR-0016](../adr/0016-confident-error-diagnosis.md)) — **모델 고유의 실패가 아니라 데이터가 정한 집합**이고(앵커 단독 오답 1.6%, 다른 아키텍처인 KoBERT도 81.7% 동조), 상당 부분이 라벨 잡음 후보다. 정리 데이터([ADR-0010](../adr/0010-data-cleaning.md)) 이후에도 남은 라벨 충돌이 이 집합에 섞여 있으며, 그 몫만큼은 훈련으로 도달할 수 없다.
+**소수의 확신 오답이 성능 상한을 만든다.** 손실 질량의 73~82%를 무는 1,500~2,000개 원소는 모델이 확신을 갖고 틀린 지점이다. 그 집합의 정체는 [confident-errors.md](confident-errors.md)가 규정했다([ADR-0016](../adr/0016-confident-error-diagnosis.md)) — **모델 고유의 실패가 아니라 데이터가 정한 집합**이고(기준 런 단독 오답 1.6%, 다른 아키텍처인 KoBERT도 81.7% 동조), 상당 부분이 라벨 잡음 후보다. 정리 데이터([ADR-0010](../adr/0010-data-cleaning.md)) 이후에도 남은 라벨 충돌이 이 집합에 섞여 있으며, 그 몫만큼은 훈련으로 도달할 수 없다.
 
-**⚠️ 이 집합을 focal에 귀속하지 않는다.** 위 기제 1(`(1−p_t)^γ`가 쉬운 원소를 지운다)은 **손실 질량이 이 집합으로 집중되는** 이유이지 집합이 **생기는** 이유가 아니다. 같은 레시피에서 γ만 뺀 BCE 런이 확신 오답을 1.75배 만들고(2,553 대 1,461), 앵커 확신 오답의 75.3%가 BCE에서도 확신 오답이다([confident-errors.md](confident-errors.md) D).
+**이 집합을 focal에 귀속하지 않는다.** 위 기제 1(`(1−p_t)^γ`가 쉬운 원소를 지운다)은 **손실 질량이 이 집합으로 집중되는** 이유이지 집합이 **생기는** 이유가 아니다. 같은 레시피에서 γ만 뺀 BCE 런이 확신 오답을 1.75배 만들고(2,553 대 1,461), 기준 런 확신 오답의 75.3%가 BCE에서도 확신 오답이다([confident-errors.md](confident-errors.md) D).
 
 **연산 비용은 정당하다.** `11_01`은 8시간 9분(18,912 step) 중 후반 절반이 +1.99pt를 벌었다. 다만 lr이 12 epoch에 걸친 linear decay이므로 **중간 체크포인트는 짧은 스케줄 런과 등가가 아니다** — 6 epoch로 줄이려면 스케줄을 다시 짜야 하고 그 종점 성능은 12 epoch 런의 6 epoch 지점보다 높다. 이 로그만으로 "후반 절반이 낭비"라고 결론 낼 수 없다.

@@ -1,13 +1,15 @@
 # 장문 열화 진단 — 표현(pooling) vs 결정(threshold), label-aware attention 게이트
 
-> **목적**: 긴 문서에서 성능이 떨어지는 현상을 label-aware attention 헤드로 겨냥하기 전에, 저하의 **성격**을 저장된 로짓만으로(로컬 CPU) 판별하는 게이트다. 무훈련 오라클 게이트(오라클-`Lno`·오라클-τ·오라클-k, [no-train-analysis.md](./no-train-analysis.md))와 같은 역할 — 비싼 GPU 실험 전에 헤드룸과 그 도달 가능성을 먼저 잰다.
->
-> 판정 축: **멀티라벨 micro-F1 · P@1 · R-Precision**(`PROJECT.md` 평가 절). SSOT = `output/longdoc_probe_test.json` · 노트북 `notebook/10_02_LongDoc_Probe.ipynb`.
+긴 문서에서 성능이 떨어지는 현상의 **성격**을 가른 진단이다. 저하가 **표현의 붕괴**(문서를 벡터 하나로 뭉개면서 정보가 사라짐)라면 풀링 개선이 레버가 되고, **결정층의 문제**라면 다른 처방이 필요하다. 비싼 GPU 실험을 걸기 전에 저장된 로짓만으로(로컬 CPU) 판별했다.
+
+**결론은 표현 붕괴가 아니다.** 가장 긴 문서에서도 정답이 상위 5개 안에 약 98% 남아 있다 — 미끄러지는 것은 top-1 위치와 임계값 배치다. 따라서 풀링 개선의 헤드룸은 0.5pt 미만으로 좁고, label-aware attention은 우선순위를 낮췄다.
+
+판정 축은 다중 라벨 micro-F1 · P@1 · R-Precision이다. SSOT는 `output/longdoc_probe_test.json`, 노트북은 `notebook/10_02_LongDoc_Probe.ipynb`다. 기호·용어·런 코드는 [GLOSSARY.md](../GLOSSARY.md)를 참조한다.
 
 ## 배경 — 이미 알려진 것
 
 - **장문 열화는 실재한다.** exp1(A.X 8192)의 길이 bin(`kobert_len` 축)별 micro가 B0(≤512) 0.8765 → B3(>2048) 0.8490으로 내려간다([modernbert-comparison.md](./modernbert-comparison.md) 「3-모델 bin 비교」).
-- **그 열화는 대분류 혼동의 증가가 아니다.** 앵커 오류율은 길이에 따라 오르나 sibling 비율이 함께 오르지 않고, 문서당 FP·FN이 균등하게 증가한다 — 대분류 판별이 아니라 전반적 확신도의 문제로, 처방이 표현력보다 결정층(캘리브레이션)을 가리킨다는 1차 신호다(`modernbert-comparison.md` 「오류 구조」).
+- **그 열화는 대분류 혼동의 증가가 아니다.** top-1 오류율은 길이에 따라 오르나 sibling 비율이 함께 오르지 않고, 문서당 FP·FN이 균등하게 증가한다 — 대분류 판별이 아니라 전반적 확신도의 문제로, 처방이 표현력보다 결정층(캘리브레이션)을 가리킨다는 1차 신호다(`modernbert-comparison.md` 「오류 구조」).
 - **길이-조건부 캘리브레이션은 닫혀 있다.** 길이 bin별 온도·아핀 보정의 오라클 헤드룸이 +0.08~0.24pt에 그친다([ADR-0006](../adr/0006-no-calibration.md)) — 결정층 레버는 거의 소진 상태다.
 
 문제 2번의 제안은 백본(`skt/A.X-Encoder-base`)을 두고 **헤드를 label-aware attention으로 교체**해 풀링 병목(8192 컨텍스트를 단일 벡터로 압축할 때의 정보 손실)을 겨냥한다. 이 게이트는 저하가 실제로 풀링 병목(표현)인지, 아니면 이미 닫힌 결정층·본질적 난이도인지를 가른다.

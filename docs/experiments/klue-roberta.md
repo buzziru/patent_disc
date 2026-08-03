@@ -1,8 +1,10 @@
 # KLUE-RoBERTa-large 대조군 — 계획·프로토콜
 
-> **목적**: `PROJECT.md`가 지정한 대조군 — **512 토큰에 묶인 또 하나의 한국어 인코더**로 A.X-Encoder의 이득이 어디서 오는지 삼각측량한다. 장문 축(exp1 8192)의 경쟁자가 아니라, exp2(A.X를 512로 묶은 control) 옆에 놓이는 **두 번째 512 관측점**이다.
->
-> 기준선(고정 test 11,271): KoBERT **micro 0.8502 / 앵커 top-1 0.8148**, exp2(A.X 512) **micro 0.8601 / 0.8203**, exp1(A.X 8192) **micro 0.8685 / 0.8256**. 상세는 [`modernbert-comparison.md`](./modernbert-comparison.md).
+**512 토큰에 묶인 또 하나의 한국어 인코더**를 놓아 A.X-Encoder의 이득이 어디서 오는지 삼각측량하는 대조군이다. 장문 런의 경쟁자가 아니라 512 대조 런 옆에 놓이는 **두 번째 512 관측점**이다. 이 문서는 계획과 프로토콜이며, 실행은 후순위로 두었다.
+
+기호·용어·런 코드는 [GLOSSARY.md](../GLOSSARY.md)를 참조한다.
+
+기준선(고정 test 11,271): KoBERT **micro 0.8502 / top-1 weighted 0.8148**, exp2(A.X 512) **micro 0.8601 / 0.8203**, exp1(A.X 8192) **micro 0.8685 / 0.8256**. 상세는 [modernbert-comparison.md](./modernbert-comparison.md).
 
 ## 이 실험이 답하는 것과 답하지 못하는 것
 
@@ -19,7 +21,7 @@
 - **입력 필드**: `invention_title + ipc_main + abstract + claims`(공백 join, 빈 필드 skip) — KoBERT baseline·A.X와 동일 필드 집합.
 - **타깃**: 문서별 188 멀티핫(`labels`, float), focal loss(alpha=0.25, gamma=2) — baseline·exp1·exp2와 정합.
 - **고정 test 원칙**: 같은 test split·같은 `kobert_len` 길이 bin 위에서 평가(`../data/data.md` 「길이 슬라이스 bin」). 토큰화 데이터셋이 canonical `length_bin`(test 3,197 / 5,183 / 2,342 / 549)을 보존하므로 그 컬럼을 그대로 쓴다 — bin 축이 `kobert_len`에 고정돼 있어 토크나이저별로 bin을 따로 구할 일은 없다. RoBERTa 토큰 길이는 절단 규모를 보는 용도이고, 그 분포는 `../data/data.md` 「KLUE-RoBERTa 토크나이저」의 percentile로 관리한다.
-- **평가**: 멀티라벨 micro/macro/sample-F1(τ=0.5) + 길이 bin + 앵커 top-1 + LRAP/R-Precision. `tag`는 `roberta-patent-len512`.
+- **평가**: 다중 라벨 micro/macro/sample-F1(τ=0.5) + 길이 bin + top-1 weighted + LRAP/R-Precision. `tag`는 `roberta-patent-len512`.
 - ⚠️ **추론 `batch_size`는 batch 8 고정** — 동적 패딩이 배치 내 최장 문서에 맞추므로 배치를 바꾸면 로짓이 ~1e-4 흔들려 지표가 4자리에서 어긋난다(실측 근거 [`modernbert.md`](./modernbert.md) 공통 프로토콜).
 
 ## 512 창 — A.X와 성격이 다른 절단
@@ -74,8 +76,8 @@ FA2(`attn_implementation="flash_attention_2"`)는 `RobertaForSequenceClassificat
 | `[UNK]` 비율 | 0.0000% | 0.0036% | **0.1495%** |
 | UNK 보유 문서 | 0.00% | 1.06% | **21.93%** |
 
-- ⚠️ **A.X-512 vs KLUE-512도 콘텐츠 양이 통제되지 않는다.** KLUE가 A.X보다 압축적이라(0.5369 vs 0.5449) 같은 512 창에 ~1% 더 많은 본문을 담는다. exp2 vs KoBERT를 오염시킨 것과 같은 종류의 confound가 **크기 약 1/10로, 이번엔 대조군 쪽에 유리하게** 재발한다. 결론을 뒤집을 크기는 아니나, **KLUE가 exp2를 근소하게 이기면 이 성분을 먼저 배제**한 뒤 해석한다(절차는 [`modernbert-comparison.md`](./modernbert-comparison.md) 「커버리지 기제의 직접 실측」).
-- ⚠️ **KLUE만 `[UNK]`가 실재한다** — 문서의 21.93%가 UNK를 최소 1개 포함(KoBERT는 SentencePiece라 0%, A.X는 1.06%). 훈련 전에 **무엇이 UNK로 떨어지는지 표본 확인**하고, 성능이 기대에 못 미치면 열화 후보로 우선 조사한다.
+- **A.X-512 vs KLUE-512도 콘텐츠 양이 통제되지 않는다.** KLUE가 A.X보다 압축적이라(0.5369 vs 0.5449) 같은 512 창에 ~1% 더 많은 본문을 담는다. exp2 vs KoBERT를 오염시킨 것과 같은 종류의 교란 요인이 **크기 약 1/10로, 이번엔 대조군 쪽에 유리하게** 재발한다. 결론을 뒤집을 크기는 아니나, **KLUE가 exp2를 근소하게 이기면 이 성분을 먼저 배제**한 뒤 해석한다(절차는 [`modernbert-comparison.md`](./modernbert-comparison.md) 「커버리지 기제의 직접 실측」).
+- **KLUE만 `[UNK]`가 실재한다** — 문서의 21.93%가 UNK를 최소 1개 포함(KoBERT는 SentencePiece라 0%, A.X는 1.06%). 훈련 전에 **무엇이 UNK로 떨어지는지 표본 확인**하고, 성능이 기대에 못 미치면 열화 후보로 우선 조사한다.
 
 ## 훈련 설정
 
@@ -84,7 +86,7 @@ FA2(`attn_implementation="flash_attention_2"`)는 `RobertaForSequenceClassificat
 | 항목 | exp2 (A.X 512) | KLUE 대조군 | 사유 |
 | --- | --- | --- | --- |
 | `model_name` | `skt/A.X-Encoder-base` | `klue/roberta-large` | — |
-| 파라미터 | 149M | 337M | 크기 confound(위 「답하지 못하는 것」) |
+| 파라미터 | 149M | 337M | 크기 교란 요인(위 「답하지 못하는 것」) |
 | `dtype` 로드 | `float32`(bf16 함정 회피 필수) | `float32`(명시적 통일, 무해) | — |
 | `micro_batch` | 8 | **미정 — `probe_batches`로 결정** | 2.26배 모델이라 재측정 필요 |
 | `learning_rate` | 3e-5 | **미정 — 2e-5 우선** | 아래 참조 |
@@ -98,7 +100,7 @@ FA2(`attn_implementation="flash_attention_2"`)는 `RobertaForSequenceClassificat
 
 - 훈련 노트북 `notebook/07_02_RoBERTa_Len512.ipynb`(Colab), 평가 `notebook/07_03_RoBERTa_Len512_Metric.ipynb`.
 - 체크포인트 `ingyoun/roberta-patent-maxlen512`, 지표 `output/total_metrics_roberta-patent-len512.json`, 로짓 `output/logits_roberta-patent-len512_{test,val}.npy`.
-- 실측은 이 문서에 절을 추가하고, 3모델 비교는 [`modernbert-comparison.md`](./modernbert-comparison.md)가 4모델로 확장해 소유한다.
+- 실측은 이 문서에 절을 추가하고, 3모델 비교는 [`modernbert-comparison.md`](./modernbert-comparison.md)가 4모델로 확장해 다룬다.
 
 ## 미정·다음 단계
 

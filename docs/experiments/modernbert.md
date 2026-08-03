@@ -1,14 +1,18 @@
 # A.X-Encoder(ModernBERT) 실험 — 계획·프로토콜 (허브)
 
-> **목적**: 512-truncation KoBERT baseline을 **장문 인코더**(`skt/A.X-Encoder-base`, 한국어 ModernBERT, 16k 컨텍스트)로 개선하고, 같은 고정 test 위에서 정량 입증한다. 이 문서는 실험 **계획·공통 프로토콜·비교 축**을 고정한다. **실험별 실측은 [`modernbert-results.md`](./modernbert-results.md), 교차 비교·결론은 [`modernbert-comparison.md`](./modernbert-comparison.md).**
->
-> 기준선(`kobert-baseline.md`, 고정 test 11,271): **앵커 top-1 weighted-F1 0.8148** / **멀티라벨 micro 0.8502 · macro 0.8470 · sample 0.8656** (τ=0.5). A.X-Encoder는 이 두 축 각각에 대해 개선을 재는 것이지, 두 수치를 서로 뺄셈하지 않는다.
+512 토큰에서 잘리는 KoBERT baseline을 **장문 인코더**(`skt/A.X-Encoder-base`, 한국어 ModernBERT, 16k 컨텍스트)로 개선하고 같은 고정 test 위에서 정량 입증하는 실험군이다. 이 문서는 그 **계획·공통 프로토콜·비교 축**을 담는 허브이며, 특히 **훈련을 조용히 망가뜨리는 함정 네 가지**(dtype·특수토큰·평가 절단·추론 배치)를 고정한다.
+
+- 실험별 실측 → [modernbert-results.md](./modernbert-results.md)
+- 교차 비교와 결론 → [modernbert-comparison.md](./modernbert-comparison.md)
+- 기호·용어·런 코드 → [GLOSSARY.md](../GLOSSARY.md)
+
+비교 기준선은 [kobert-baseline.md](./kobert-baseline.md)의 재현치다(고정 test 11,271): **top-1 weighted-F1 0.8148** / **다중 라벨 micro 0.8502 · macro 0.8470 · sample 0.8656**(τ=0.5). 두 축 각각에서 개선을 재는 것이지 두 수치를 서로 빼지 않는다.
 
 ## 현재 결론 (요약)
 
-- **exp1(8192)이 KoBERT 재현선을 넘었다**: 멀티라벨 micro 0.8502 → **0.8685**(+1.83pt), 앵커 top-1 weighted 0.8148 → **0.8256**.
+- **exp1(8192)이 KoBERT 재현선을 넘었다**: 다중 라벨 micro 0.8502 → **0.8685**(+1.83pt), top-1 weighted 0.8148 → **0.8256**.
 - **개선 분해**(exp2 512 control): **컨텍스트 길이에 +0.84pt**(exp1−exp2 — 같은 모델·같은 토크나이저라 통제된 귀속), **모델 성분 +0.99pt**(exp2−KoBERT — 아키텍처·사전학습·토크나이저 + 512 창에서의 커버리지 우위가 섞인 값이며 더 쪼개지 않는다). 창 확장 효과는 문서가 길수록 커져 최장 문서군(B3)에서 최대(+2.64pt).
-- **멀티라벨 전 지표에서 exp1 > exp2 > KoBERT 단조**(F1 micro/macro/sample · LRAP · R-Precision · P@k). 상세는 [`modernbert-results.md`](./modernbert-results.md)·[`modernbert-comparison.md`](./modernbert-comparison.md).
+- **다중 라벨 전 지표에서 exp1 > exp2 > KoBERT 단조**(F1 micro/macro/sample · LRAP · R-Precision · P@k). 상세는 [`modernbert-results.md`](./modernbert-results.md)·[`modernbert-comparison.md`](./modernbert-comparison.md).
 
 ## 공통 프로토콜 (모든 실험 고정)
 
@@ -19,9 +23,9 @@
 - ⚠️ **토크나이저 특수토큰 함정**(실측): A.X-Encoder는 시퀀스를 `<s>`**(0) … 본문 …** `<\s>`**(1)** 로 감싼다. 마감 토큰은 **`eos_token_id`(=1)**이며, `tokenizer.sep_token_id`**는** `<sep>`**(=3)으로 실제 마감 토큰이 아니다** — 절단 복원에 이걸 쓰면 엉뚱한 토큰이 붙는다. 사전토큰화본을 `max_length`로 자를 때 단순 리스트 슬라이싱(`x[:max_len]`)은 꼬리의 `<\s>`를 버리므로(HF 표준 truncation은 보존) `x[:max_len-1] + [eos_token_id]`**로 마감**한다. 앞의 `<s>`는 index 0이라 슬라이싱해도 보존된다. 영향 자체는 작다(8,192 초과 문서가 1% 미만 + `classifier_pooling: "mean"`이라 토큰 1개 손실이 평균에 미치는 영향 미미).
 - **타깃**: 문서별 188 멀티핫(`labels`), sigmoid + BCE 계열 손실(baseline 정합을 위해 focal 옵션 포함 검토).
 - **고정 test 원칙**: KoBERT와 **같은 test split·같은** `kobert_len` **길이 bin** 위에서 평가(`../data/data.md` 「길이 슬라이스 bin」). 비교 축을 흔들지 않기 위해 bin은 A.X 토큰이 아니라 KoBERT 토큰으로 고정한다.
-- **평가**: `notebook/03_02_Metric.ipynb`(멀티라벨 micro/macro/sample-F1 + 길이 bin + 앵커 top-1 + LRAP/R-Precision). `tag`를 `axencoder_len{max_len}` 등으로 실험마다 유일하게 잡아 로짓 캐시 오염을 막는다.
+- **평가**: `notebook/03_02_Metric.ipynb`(다중 라벨 micro/macro/sample-F1 + 길이 bin + top-1 weighted + LRAP/R-Precision). `tag`를 `axencoder_len{max_len}` 등으로 실험마다 유일하게 잡아 로짓 캐시 오염을 막는다.
 - ⚠️ **평가 입력도 훈련과 같은 `max_len`으로 절단**(실측): 사전토큰화 데이터셋은 truncation 없이 전체 토큰(최대 10,523)을 담으므로, 평가 시 test를 **훈련과 동일한 `max_len`으로 절단**(`x[:max_len-1]+[eos]`)한 뒤 추론한다. 이 절단을 빠뜨리면 512 모델에 전체 문서가 들어가 훈련 창과 어긋난 무의미한 평가가 된다(exp2에서 특히 치명적 — test의 ~72%가 512 초과). KoBERT는 512로 사전토큰화된 데이터를 써 절단이 불필요했으나 ModernBERT는 무절단본이라, 평가 노트북(`04_03`·`05_02`)이 `_truncate`로 훈련 `_prep`과 동일 절단을 재현한다.
-- ⚠️ **추론 `batch_size`는 지표 4번째 자리를 바꾼다**(실측): 평가·로짓 덤프는 **batch 8 고정**(`03_02`·`04_03`·`05_02`·`06_00` 전부 동일). `EvalCollator`의 동적 패딩(`padding=True`)이 배치 내 최장 문서에 맞추므로, 배치 크기를 바꾸면 패딩량과 행렬 shape이 바뀌고 fp16·bf16 autocast의 누산 순서·cuBLAS 커널 선택이 달라져 **로짓이 ~1e-4 흔들린다**. 그 자체는 무해하나 τ=0.5 경계와 top-1 argmax에서 문서 몇 건이 뒤집혀 지표가 4자리에서 어긋난다. 로짓 재덤프(`06_00`)에서 batch를 64로 올린 두 모델만 SSOT와 불일치했고(mb512 anchor F1 0.8203→0.8199, micro 0.8601→0.8600), batch 8을 유지한 `modernbert-patent-len8192`만 5개 지표 전부 4자리 일치했다. 이 대조는 **체크포인트·절단·행 순서·dtype 경로가 정확하다는 증거**이기도 하다 — 아울러 토크나이저를 ckpt가 아닌 base(`skt/A.X-Encoder-base` revision `9708f9c4`)에서 로드해도 동일 결과임을 확인(8192 모델이 base 토크나이저로 완전 일치).
+- ⚠️ **추론 `batch_size`는 지표 4번째 자리를 바꾼다**(실측): 평가·로짓 덤프는 **batch 8 고정**(`03_02`·`04_03`·`05_02`·`06_00` 전부 동일). `EvalCollator`의 동적 패딩(`padding=True`)이 배치 내 최장 문서에 맞추므로, 배치 크기를 바꾸면 패딩량과 행렬 shape이 바뀌고 fp16·bf16 autocast의 누산 순서·cuBLAS 커널 선택이 달라져 **로짓이 ~1e-4 흔들린다**. 그 자체는 무해하나 τ=0.5 경계와 top-1 argmax에서 문서 몇 건이 뒤집혀 지표가 4자리에서 어긋난다. 로짓 재덤프(`06_00`)에서 batch를 64로 올린 두 모델만 SSOT와 불일치했고(mb512 top-1 weighted-F1 0.8203→0.8199, micro 0.8601→0.8600), batch 8을 유지한 `modernbert-patent-len8192`만 5개 지표 전부 4자리 일치했다. 이 대조는 **체크포인트·절단·행 순서·dtype 경로가 정확하다는 증거**이기도 하다 — 아울러 토크나이저를 ckpt가 아닌 base(`skt/A.X-Encoder-base` revision `9708f9c4`)에서 로드해도 동일 결과임을 확인(8192 모델이 base 토크나이저로 완전 일치).
 - **인프라**: Colab L4 기본(장문은 메모리를 많이 써 24GB 안전, `../infra/colab-jobs.md`). 필요 시 Lightning Job.
 
 ## 실험 목록
@@ -49,7 +53,7 @@ full length는 극소수 장문(p99≈3,621, max 10,523)이 배치에 섞일 때
 
 실현된 비교 결과는 [`modernbert-comparison.md`](./modernbert-comparison.md)에 있고, 여기서는 각 축의 **설계 의도**를 고정한다.
 
-- **exp1 vs KoBERT**: 최종 headline — 장문 인코더가 baseline을 이기는가(멀티라벨 micro / 앵커 top-1 각각).
+- **exp1 vs KoBERT**: 최종 headline — 장문 인코더가 baseline을 이기는가(다중 라벨 micro / top-1 weighted 각각).
 - **exp1 vs exp2**: **가장 중요한 ablation.** 같은 모델·같은 토크나이저에서 컨텍스트 길이만 다르므로, 개선분 중 **컨텍스트 길이의 순수 기여**를 분리한다. exp2가 KoBERT를 이미 이기면 개선의 상당 부분은 길이가 아니라 모델/토크나이저 우위라는 뜻(가설 반증 신호).
 - **exp1 vs exp3**: **형식 구조화의 기여.** 같은 길이에서 입력 포맷만 다르므로 exp3의 값은 **오로지 exp1과의 delta로만** 해석된다 — exp3은 단독으로 해석되는 실험이 아니다.
 - **길이 bin Δ(A.X − KoBERT)**: B0(≤512)에서 ≈0, B1→B3로 단조 증가하면 장문 가설 지지. 전 구간 균일 개선이면 길이 효과가 아니라 모델 자체 성능차(`../data/data.md` 「검증 로직」).

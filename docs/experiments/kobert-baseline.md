@@ -1,7 +1,13 @@
 # KoBERT baseline 재현 — 기준선 수립과 결과 회고
 
-> **목적**: 공식 `0.8249`를 그대로 쓰지 않고 **KoBERT baseline을 직접 재현**해, 장문 인코더(`skt/A.X-Encoder-base`)와의 공정 비교선을 세운다. 이 문서는 재현 **원칙**을 남기고, 실제 실행 **구성·결과**를 기록하며, 원본과의 편차를 **회고·분석**한다.
-> 참고 코드(업체 제공): `{01.data_processing, 02_training_bert, 03_model_test}.ipynb`. 재현 노트북: `notebook/03_Baseline_Train_KoBERT.ipynb`, 실행 결과: `notebook_output/03_Baseline_Train_KoBERT_colab_output.ipynb`.
+공식 baseline 수치 `0.8249`를 그대로 쓰지 않고 **KoBERT baseline을 직접 재현**해, 이후 모든 실험이 대조할 비교선을 세운 기록이다. 공식 수치를 쓸 수 없는 이유는 그 데이터 분할에 누수 위험이 있고([ADR-0001](../adr/0001-comparison-baseline.md)), 지표가 top-1 단일 예측이라 다중 라벨 성능을 대변하지 못하기 때문이다.
+
+**재현 결과는 top-1 weighted-F1 0.8148 / 다중 라벨 micro-F1 0.8502**이며, 이후 모든 비교의 출발선이 된다.
+
+기호·용어·런 코드는 [GLOSSARY.md](../GLOSSARY.md)를 참조한다.
+
+- 참고 코드(업체 제공): `{01.data_processing, 02_training_bert, 03_model_test}.ipynb`
+- 재현 노트북 `notebook/03_Baseline_Train_KoBERT.ipynb` · 실행 결과 `notebook_output/03_Baseline_Train_KoBERT_colab_output.ipynb`
 
 ## 재현 원칙
 
@@ -28,7 +34,7 @@
 | baseline 실측 | Micro 0.8261 / Macro 0.8038 / **weighted 0.8249** (원본 24,525 test)                            | `03` cell-11                                        |
 
 
-> ⚠️ 원본은 학습 중 모니터링에 `P@1/3/5`(`ms_get_p_5`, `topk(logit,5)`)도 계산한다(`02` cell-12). headline은 어디까지나 `03`의 top-1 weighted-F1.
+> 원본은 학습 중 모니터링에 `P@1/3/5`(`ms_get_p_5`, `topk(logit,5)`)도 계산한다(`02` cell-12). headline은 어디까지나 `03`의 top-1 weighted-F1.
 
 ## 재현 구성 (실제 실행)
 
@@ -48,7 +54,7 @@ def evaluate_topk(logits, multihot):          # logits/multihot: [N,188]
         "micro_f1":    f1_score(gold_top1, pred_top1, average="micro"),
         "macro_f1":    f1_score(gold_top1, pred_top1, average="macro"),
     }
-    order = np.argsort(-logits, axis=1)                     # P@k (멀티레이블 참고 지표)
+    order = np.argsort(-logits, axis=1)                     # P@k (다중 라벨 참고 지표)
     for k in (1, 3, 5):
         topk = order[:, :k]
         hit = np.take_along_axis(multihot, topk, axis=1).sum(1)
@@ -83,13 +89,13 @@ def evaluate_topk(logits, multihot):          # logits/multihot: [N,188]
 
 **이 `0.8148`이 A.X-Encoder·KLUE-RoBERTa 비교의 기준점이다.** (참고: 원본 `0.8249`는 누수 위험이 있는 다른 test 24,525건 위 수치 → 직접 비교 대상 아님)
 
-## 멀티라벨·길이구간 재평가 (03_02_Metric)
+## 다중 라벨·길이구간 재평가 (03_02_Metric)
 
-top-1 weighted-F1은 벤더 연속성을 위한 **앵커**일 뿐, 멀티라벨(문서당 평균 약 1.2 라벨, 고유 문서의 약 14%가 2개 이상)을 top-1 단일라벨로 접어 성능을 구조적으로 축소한다. 이를 바로잡고 장문 가설(길이구간별 성능)을 측정하기 위해 `notebook/03_02_Metric.ipynb`로 **같은 고정 test(11,271) 위에서** 진짜 멀티라벨 지표를 산출한다. 실측 결과: `output/metrics_kobert-patent-baseline_len512.json`.
+top-1 weighted-F1은 벤더 연속성을 위한 **기준점**일 뿐, 다중 라벨(문서당 평균 약 1.2 라벨, 고유 문서의 약 14%가 2개 이상)을 top-1 단일라벨로 접어 성능을 구조적으로 축소한다. 이를 바로잡고 장문 가설(길이구간별 성능)을 측정하기 위해 `notebook/03_02_Metric.ipynb`로 **같은 고정 test(11,271) 위에서** 진짜 다중 라벨 지표를 산출한다. 실측 결과: `output/metrics_kobert-patent-baseline_len512.json`.
 
-- **멀티라벨 F1 (τ=0.5 고정, sigmoid+BCE 확률):** micro **0.8502** / macro **0.8470** / sample **0.8656**. 빈 예측률 1.16% — 빈 예측을 argmax 1개로 강제 보정해도 micro 0.8506 / macro 0.8474로 거의 동일(보정 여지가 작다는 뜻).
+- **다중 라벨 F1 (τ=0.5 고정, sigmoid+BCE 확률):** micro **0.8502** / macro **0.8470** / sample **0.8656**. 빈 예측률 1.16% — 빈 예측을 argmax 1개로 강제 보정해도 micro 0.8506 / macro 0.8474로 거의 동일(보정 여지가 작다는 뜻).
 - **랭킹 지표:** LRAP **0.9272**, R-Precision **0.8816**.
-- **앵커 top-1**(위 「결과」 표와 동일 계산): weighted-F1 0.8148, P@1/3/5 = 0.894 / 0.962 / 0.979. 두 경로가 일치해 지표 구현의 정합성을 확인한다.
+- **top-1 weighted**(위 「결과」 표와 동일 계산): weighted-F1 0.8148, P@1/3/5 = 0.894 / 0.962 / 0.979. 두 경로가 일치해 지표 구현의 정합성을 확인한다.
 
 ### 길이구간별 F1 (bin은 `kobert_len` 기준 고정)
 
@@ -104,10 +110,10 @@ top-1 weighted-F1은 벤더 연속성을 위한 **앵커**일 뿐, 멀티라벨(
 
 ### 해석
 
-- **top-1 프레이밍이 성능을 축소함을 실측 확인.** 앵커 top-1은 0.8148인데 멀티라벨 micro는 0.8502다(분모가 달라 뺄셈 비교는 불가). `P@1`(0.894)이 top-1 accuracy(0.8147)보다 8pt 높은 것도 같은 현상 — 멀티라벨 문서에서 모델이 "유효하지만 argmax-gold가 아닌" 라벨을 상위로 꼽는 경우다.
-- **macro ≈ micro (0.847 vs 0.850)는 평탄화 분포의 직접 증거.** 188-class 멀티라벨에서 통상 macro ≪ micro인데 붙어 있는 것은 클래스 균형(중분류당 1,300 ~ 2,600건) 때문 — 지표가 데이터 설계와 정합한다.
+- **top-1 프레이밍이 성능을 축소함을 실측 확인.** top-1 weighted은 0.8148인데 다중 라벨 micro는 0.8502다(분모가 달라 뺄셈 비교는 불가). `P@1`(0.894)이 top-1 accuracy(0.8147)보다 8pt 높은 것도 같은 현상 — 다중 라벨 문서에서 모델이 "유효하지만 argmax-gold가 아닌" 라벨을 상위로 꼽는 경우다.
+- **macro ≈ micro (0.847 vs 0.850)는 평탄화 분포의 직접 증거.** 188-class 다중 라벨에서 통상 macro ≪ micro인데 붙어 있는 것은 클래스 균형(중분류당 1,300 ~ 2,600건) 때문 — 지표가 데이터 설계와 정합한다.
 - **랭킹(R-Prec 0.882) > 임계 결정(micro 0.850).** τ=0.5가 최적은 아니며 임계 튜닝 여지가 있다. 현재는 "τ=0.5 고정" 결정을 따르되, 후속 실험에서 val 임계 튜닝을 성능 레버로 남겨둔다.
-- **길이 단조 하락은 512 truncation 가설의 정황이나 확증은 아니다.** micro가 B0 0.869 → B3 0.821로 완만히 내려간다. 다만 긴 문서가 truncation 때문에 어려운지, 원래 복잡·다라벨이라 어려운지 KoBERT 단독으로는 분리 불가능하다. 이 confound를 깨는 것은 **동일 bin 위 A.X-Encoder 재평가**(장문이 B2/B3를 회복하고 B0는 유지되는지)다.
+- **길이 단조 하락은 512 truncation 가설의 정황이나 확증은 아니다.** micro가 B0 0.869 → B3 0.821로 완만히 내려간다. 다만 긴 문서가 truncation 때문에 어려운지, 원래 복잡·다라벨이라 어려운지 KoBERT 단독으로는 분리 불가능하다. 이 교란 요인을 깨는 것은 **동일 bin 위 A.X-Encoder 재평가**(장문이 B2/B3를 회복하고 B0는 유지되는지)다.
 - **B3 macro 0.724는 소표본 잡음이 크다.** 549문서 × 약 1.2라벨을 188클래스에 흩뿌리면 다수 클래스의 support가 0~3이라 per-class F1이 널뛴다(`zero_division=0`이 결측 클래스를 0으로 끌어내림). **길이 bin은 micro를 주 지표로, macro는 소표본 주의 각주와 함께** 읽는다 — B3 macro를 단독 인용하지 않는다.
 
 ## 회고·분석
@@ -121,6 +127,6 @@ top-1 weighted-F1은 벤더 연속성을 위한 **앵커**일 뿐, 멀티라벨(
 ## 다음 단계·유의
 
 - **A.X-Encoder(04)는 KoBERT와 반드시 같은 test split에서 평가한다.** 나아가 `03_02_Metric`의 **같은 bin·같은 문서집합**으로 재평가해 bin별 delta(A.X-Encoder − KoBERT) 표를 직접 산출한다 — B2/B3 회복 여부가 장문 가설의 결정적 그림이다.
-- **두 관점을 함께 본다**: 앵커 top-1 weighted-F1(벤더 연속성)과 멀티라벨 micro/macro-F1@τ(목표 지표)는 계산이 다르므로 뺄셈 비교하지 않고 각각의 축에서 비교한다.
-- **`0.8148`(top-1)과 `0.8502`(멀티라벨 micro)를 혼동하지 않는다** — 전자는 벤더 비교용 앵커, 후자는 멀티라벨 목표 지표다.
+- **두 관점을 함께 본다**: top-1 weighted-F1(벤더 연속성)과 다중 라벨 micro/macro-F1@τ(목표 지표)는 계산이 다르므로 뺄셈 비교하지 않고 각각의 축에서 비교한다.
+- **`0.8148`(top-1)과 `0.8502`(다중 라벨 micro)를 혼동하지 않는다** — 전자는 벤더 비교용 기준 런, 후자는 다중 라벨 목표 지표다.
 
