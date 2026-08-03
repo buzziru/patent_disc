@@ -1,7 +1,7 @@
 # ADR-0005 — 단일 모델: 앙상블 배격
 
 - **상태**: 수용
-- **참조**: `PROJECT.md` 「닫힌 갈래」·「Hard boundary」, `NEXT_SESSION.md` 「확정된 사실」
+- **참조**: `PROJECT.md` 「닫힌 갈래」·「Hard boundary」
 
 ## 맥락
 

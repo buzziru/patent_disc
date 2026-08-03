@@ -187,7 +187,7 @@ KoBERT 대비 문서별 차이(`kobert_len − A.X length`, 양수 = A.X가 짧�
 | 합    | 224,328   | 223,992   | −336 | 178,287,283 | 796.0  |
 
 - 문서 −336은 「입력 동일 케이스(제거 완료, 총 336문서)」의 제거분이다(train −279 / val −30 / test −27). 위 길이 분포 표(mean·percentile)는 **정제 전** 문서 수 기준이며, 그 train mean 795.4가 정제 후 실측 평균 795.5와 사실상 일치해 제거가 길이 분포를 흔들지 않았음을 재확인한다.
-- **train 총 160.4M 토큰**이 TAPT MLM 예산의 기준값이다(`../../NEXT_SESSION.md` 도메인 사전학습 축 — test는 누수 방지로 MLM 제외).
+- **train 총 160.4M 토큰**이 TAPT MLM 예산의 기준값이다(`../experiments/domain-pretraining.md` — test는 누수 방지로 MLM 제외).
 
 ### 입력 토큰 길이 분포 (KLUE-RoBERTa 토크나이저)
 

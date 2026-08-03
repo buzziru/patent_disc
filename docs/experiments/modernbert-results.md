@@ -92,3 +92,23 @@ exp2는 **512 창에서도 네 지표 모두 KoBERT를 넘는다** — 개선의
 - **배치 상향의 이득은 캘리브레이션 축에 나타난다.** empty rate가 exp2 1.79%→1.17%로 내렸다. `09_xx` eff128 런이 손실 무관하게 focal eff8보다 낮은 empty rate를 보여([loss-function.md](loss-function.md) 실측) 이 이동을 손실이 아니라 **배치 성분**으로 귀속한다. micro 상한은 512 focal에서 이미 포화에 가까워 잡음 감소가 천장을 밀지 못한다.
 - **손실 축 종결을 보강한다.** 동일 레시피(eff128/lr4.8e-4)에서 focal이 BCE·ZLPR·ASL을 모두 앞선다([loss-function.md](loss-function.md) 실측 표) — 손실 후보들의 열세가 레시피 confound가 아님을 레시피 정합 focal로 확정한다([ADR-0009](../adr/0009-loss-axis-closure.md)).
 - **클리닝 성분은 이 런에서 분리되지 않는다.** 이 런과 exp2를 같은 정리 test에서 대조한 per-class paired diff-in-diff(충돌 연루 74클래스 대 비연루 114클래스)가 유의하지 않다(`11_02`, `output/error_analysis_cleandata_vs_exp2.json`) — 판정·수치는 [ADR-0010](../adr/0010-data-cleaning.md) 「결과·영향」.
+
+## 전 런 대조 — test micro-F1
+
+프로젝트가 낸 모든 full run을 한 표에 둔다. 축별 판정·기제는 각 축 문서가 소유하며 여기서는 서열만 본다.
+
+| 런 | max_len | 손실 | 레시피 | micro-F1 | 비고 |
+| --- | --- | --- | --- | --- | --- |
+| KoBERT 재현 | 512 | focal | eff8/lr3e-5 | 0.8502 | 비교 기준점([kobert-baseline.md](kobert-baseline.md)) |
+| exp2 (A.X) | 512 | focal | eff8/lr3e-5 | 0.8601 | 512 계열 최고·손실 A/B 기준선 |
+| **exp1 (A.X)** | **8192** | focal | eff8/lr3e-5 | **0.8685** | **최고 full run** |
+| ZLPR (A.X) | 512 | ZLPR | eff128/lr4.8e-4 | 0.8493 | 미채택([ADR-0009](../adr/0009-loss-axis-closure.md)) |
+| ASL (A.X) | 512 | ASL | eff128/lr4.8e-4 | 0.8362 | 미채택 |
+| BCE (A.X) | 512 | BCE | eff128/lr4.8e-4 | 0.8538 | 진단(γ의 순수 값 −0.62pt, 시드 취약) |
+| `11_01` (A.X) | 512 | focal | eff128/lr4.8e-4 | 0.8588 | 정리 데이터·신 레시피 첫 focal 풀런 — **현행 앵커** |
+| `13_02` (A.X TAPT) | 512 | focal | eff128/lr4.8e-4 | 0.8572 | 도메인 축 종결(앵커 −0.15pt, 잡음 내) |
+| `11_04` (A.X seed153) | 512 | focal | eff128/lr4.8e-4 | 0.8570 | 시드 축 측정용 앵커 재현(Δ −0.176pt) |
+| `14_01` (A.X MCLoss) | 512 | focal+MCL λ0.0444 | eff128/lr4.8e-4 | 0.8467 | 계층 손실 1런(앵커 −1.20pt, **잡음 밖**) |
+
+- **exp1~BCE는 구 test(11,271) 기준이고 `11_01`·`13_02`·`11_04`·`14_01`만 정리 test(11,244)다.** 정리 test 재계산값은 exp1 0.8683 · exp2 0.8599 · KoBERT 0.8500이며 서열·격차는 불변이다(`output/headline_cleaned_test.json`). **서로 다른 test에서 잰 micro를 나란히 놓지 않는다.**
+- 배포 런(`16_01`, max_len 4096)의 결정·근거는 [final-run.md](final-run.md)가 소유한다.

@@ -45,7 +45,26 @@ GPU 훈련을 외부 잡으로 돌리는 방법 — 이 세션은 **로컬 Windo
 - `[experiments/domain-pretraining.md](./experiments/domain-pretraining.md)` — **도메인 사전학습(TAPT) 축**(자체 특허 코퍼스 MLM 계속학습 → 분류 파인튜닝): MLM 5 epoch 완주 실측(val loss 0.4272→0.3742, 약 802M 토큰, Colab L4 ~14h)과 아티팩트 검증 절차(`ingyoun/A.X-patent-tapt-mlm@62818c2`, 토크나이저 동일성·헤드 초기화 대칭). **분류 실측 기준 미달로 축 종결**([ADR-0013](./adr/0013-domain-pretraining-closure.md)) — 정리 test micro 0.8572로 앵커 `11_01`(0.8588) 대비 −0.15pt, 판정선 +0.4pt 미달. 훈련 곡선의 초기 우위도 잡음(3 epoch까지 평균 +0.04pt, eval별 델타 sd 0.43pt). 실패 기제는 **코퍼스 동일성**(TAPT 802M 토큰 대 분류 파인튜닝 1,116M 토큰을 같은 문서에서 본다). MLM 체크포인트 교체·`KorPatElectra` 재개 모두 불채택 근거 포함. ⚠️ `13_02` 로짓 덤프는 행 순열로 깨져 폐기(팟 `src` 미동기화로 행 순서 방어가 빠진 구 사본이 돌았다)
 - `[experiments/eval-noise.md](./experiments/eval-noise.md)` — **잡음 하한 두 성분**(평가 표본 + 훈련 시드): ① 고정 test paired bootstrap(GPU 0)으로 정리 test 11,244에서 micro 델타의 표본 잡음 sd 0.18~0.21pt(`scripts/eval_noise_bootstrap.py` · `output/eval_noise_bootstrap.json`). ② `11_01` 시드 재현(`11_04`, seed 42 대 153, 시드 외 전 설정 동일)으로 훈련 잡음 측정 — 시드 델타 micro −0.18pt가 구간 [−0.55, +0.21]로 0을 포함하고 `D² < σ_표본²`이라 **훈련 잡음이 평가 잡음 바닥 아래로 분해되지 않는다**(관측 |Δ| 0.176pt ≈ 순수 표본 기대 0.157pt). 따라서 표본 구간을 넓힐 근거가 없어 ①의 판정이 그대로 선다. 시드 스프레드는 epoch 1–2의 2.1pt에서 epoch 11–12의 0.12pt로 수렴 — 부분 학습 곡선으로 설정을 비교하면 안 되는 근거(`scripts/seed_variance.py` · `output/seed_variance.json`). ③ 두 번째 시드로 손실 축 재측정 — **focal−BCE가 +0.52pt(유의) → +0.34pt(CI [−0.05, +0.74], 미유의)로 뒤집혀** γ 이득이 미확정으로 강등, ZLPR·ASL·길이·모델 성분은 여유가 넓어 불변. 운영 판정선 **micro 델타 0.6pt 미만은 시드 1런씩으로 확정하지 않는다**. ⚠️ 자유도 1이라 "σ_훈련=0"이 아니라 "이 test로는 안 보인다"이며 다른 레시피로 옮길 근거 없음
 - `[experiments/training-curves.md](./experiments/training-curves.md)` — **훈련 곡선 판독**(4런 공통: val loss 3~7 epoch 최저 후 상승, F1은 끝까지 개선 → 정상 형상): 손실 질량 분해로 상승의 정체 규정(원소 0.1%가 손실의 75~88% · 확신 오답 1,500~2,000개가 73~82%), τ 아티팩트·val 과적합 해석 배제, best 선정·early stop을 손실 아닌 주 지표에 거는 근거와 감시 대조점. 대가는 확률 포화(양성의 70~77%가 p≥0.9)로 KD soft target에 전이(`scripts/loss_mass_decomposition.py` · `output/loss_mass_decomposition.json`)
+- `[experiments/confident-errors.md](./experiments/confident-errors.md)` — **확신 오답 진단**(손실 질량 73~82%를 무는 원소 1,461개의 정체 — [ADR-0016](./adr/0016-confident-error-diagnosis.md)): 교차 모델 합의로 **모델 고유 실패를 배제**한다(시드 쌍둥이 86.3% → 다른 아키텍처 KoBERT 81.7%, 앵커 단독 1.6%. 대조군인 경계 오답은 전원 동조 21.1%·단독 14.3%). 공기 검정은 확신 FP를 **라벨 누락 후보**로 규정하고(전원 동조분 lift 6.62 ≈ 입력 동일 라벨 충돌 실측 5.56, 앵커 단독 0.52), 확신 FN을 **문서에서 겉도는 이질 라벨**로 규정한다(같은 k≥2 모집단에서 3.57 대 맞힌 정답 19.11). **"focal이 오답 확신을 키운다"는 반증된다** — γ만 뺀 BCE가 확신 오답을 1.75배 만들고 앵커 집합의 75.3%가 BCE에서도 확신 오답이다(손실은 질량을 집중시킬 뿐 집합을 만들지 않는다). 잡음 후보가 전부 실제 잡음이면 측정 micro가 `11_01` +2.14pt · exp1 +1.80pt 하향 편향(가정적 값 — 정답 재작성 금지). 두 극단의 상세 분류(G절, `scripts/confident_error_classes.py` · `output/confident_error_classes.json`)는 **잡음의 위치가 클래스가 아니라 문서**임을 보인다 — 전원 동조 FP 419개가 329개 쌍에 흩어지고(상위 10쌍 10.7%), 라벨 충돌 실측 74클래스와의 겹침도 관측/기대 1.08이며, **앵커 단독 24개는 시드 쌍둥이가 100% 맞힌다**(모델 귀속분 사실상 0). 재라벨링 검토 후보 884행·752문서를 `output/relabel_candidates.csv`로 산출(반영하지 않음). **성능 보고에 실을 한계 기술 문안은 「보고용 요약」 절이 소유**한다. ⚠️ 공기 검정의 confound(모델이 학습한 공기 구조와 미분리)·k=1 확신 FN 364개 미분류·클래스 축 검정의 낮은 검정력이 이 진단의 한계(`scripts/confident_error_diagnosis.py` · `output/confident_error_diagnosis.json`)
+- `[experiments/final-run.md](./experiments/final-run.md)` — **배포 모델 확정 런**(`16_01`, max_len 4096)의 결정·근거: 창 크기 선택(유실 토큰 1.60% 대 `micro_batch` 2배 — `scripts/length_cost.py`·`output/length_cost.json`), LR range test 판정(전환점 512 8.84e-3 · 8192 7.13e-3, 운영 lr이 15~18배 아래 — `output/lr_range_verdict.json`), lr이 `eff_batch`만 따르고 `micro_batch`와 무관한 이유, 착수하지 않는 것(512 HPO·스케줄러 교체·토큰 예산 배칭), 실행 후 할 일
 - (예정) 데이터 EDA/필드 길이 분석, 클래스 불균형 노트, 실험별 설정·결과 요약, 모델/입력 필드 선택 근거
+
+### 분석 스크립트 (`scripts/`) — 전부 GPU 0, 덤프된 로짓·라벨만 쓴다
+
+각 스크립트는 `output/<같은 이름>.json`에 수치를 남기고, 위 실험 문서가 그 해석을 소유한다. 새 런(arm)을 얹을 때는 대개 상단 `MODELS`/`TAGS` 사전 한 줄만 고치면 된다.
+
+| 스크립트 | 재사용 가능한 도구 |
+| --- | --- |
+| `hierarchy_loss_mass.py` | `paired_bootstrap`(문서 단위 CI) · `matched_operating_point`(작동점 정규화 — 예측량이 다른 두 런의 오류 칸을 τ=0.5에서 직접 비교하지 않기 위한 것) |
+| `hierarchy_loss_grad_budget.py` | 손실 항별 기울기 예산 · 포화도 · 순위 국소화(P@1을 `Lno` 축과 조건부 형제 축으로 분해) |
+| `kd_transfer_structure.py` | 여유 밴드 분해 · 재조정 도달(캘리브레이션 배제) · 라우팅 전이(val→test) · 집중도(관측/기대) |
+| `kd_grad_budget.py` | 손실 항별 기울기 몫 · 축퇴도 · 신호 국소화 · 설계 λ 역산 |
+| `confident_error_diagnosis.py` | 교차 모델 합의(대조군 포함) · train 공기(lift) 검정 · 손실 질량 분해 · 측정 편향 |
+| `confident_error_classes.py` | 클래스 쌍·라벨 축 분해 · 시드 쌍둥이 대조 · 재라벨링 후보 목록(CSV) |
+| `loss_mass_decomposition.py` | 원소별 focal 질량 집중도 · 확률 포화도 · τ 스윕 |
+| `eval_noise_bootstrap.py` · `seed_variance.py` | 평가 표본 잡음 · 훈련 시드 잡음(판정선의 근거) |
+| `length_cost.py` | 입력 길이 분포 · `max_len`별 유실/비용/`micro_batch` 여유 |
+| `hierarchy_conditional.py` · `multilabel_shape.py` · `ipc_field_analysis.py` | 계층 조건부 추정량 · 다중레이블 형상 · IPC 필드 신호 |
 
 ### 결정 기록·회고 (`adr/`)
 

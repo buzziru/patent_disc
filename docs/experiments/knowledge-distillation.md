@@ -97,7 +97,7 @@ softmax KD가 아니라 **188 독립 sigmoid의 라벨별 이진 KD**다.
 
 KD 훈련은 **모든 훈련 문서(정리 train 201,616)**에 대한 teacher 확률이 필요하다 — val/test 덤프만으로는 부족하다.
 
-1. **저렴한 teacher부터 덤프**: ASL@512 · KoBERT@512를 정리 train에 추론(512 창이라 저렴). 추론 진입점은 `src/patent_train`(`TrainConfig.for_inference` + `build_model(checkpoint=)`), 순차 샘플러로 행 순서를 `document_id`에 고정(`group_by_length` 순열 함정 회피 — `NEXT_SESSION.md` 함정, `runner.predict_logits`가 assert).
+1. **저렴한 teacher부터 덤프**: ASL@512 · KoBERT@512를 정리 train에 추론(512 창이라 저렴). 추론 진입점은 `src/patent_train`(`TrainConfig.for_inference` + `build_model(checkpoint=)`), 순차 샘플러로 행 순서를 `document_id`에 고정(`group_by_length` 순열 함정 회피 — `runner.predict_logits` docstring, 행 축 SSOT는 `../data/data.md` 「주의」).
 2. **train 포화 측정 — 주 비용 앞의 게이트**: 1의 로짓으로 문서당 중간대 라벨 수를 재고 test 값(ASL 5.37 · KoBERT 5.62)과 대조한다. **train이 test보다 크게 낮으면 T>1로 타깃을 평탄화**해야 하며, T는 exp1 덤프 전에 정한다(「teacher 포화」). 측정 배터리는 `scripts/loss_mass_decomposition.py`의 `soft_target_info`를 train 축에 적용해 재사용한다.
 3. **exp1@8192를 정리 train에 덤프**: **exp1@8192 × 201,616 문서가 이 실험의 주 비용**(GPU 수 시간)이다.
 4. **soft target 조립**: `q = Σ w_k·sigmoid(z_k)`(필요 시 `q_T`)를 (201,616, 188)로 만들고 정리 train `document_id` 순서로 저장(fp16). 이 배열이 라벨과 함께 KD 훈련 입력이 된다.
