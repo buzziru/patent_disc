@@ -1,6 +1,7 @@
 # ADR-0001 — 비교선 수립: 누수 없는 자체 데이터셋 + KoBERT 재현
 
 - **상태**: 수용
+- **용어·런 코드**: [GLOSSARY.md](../GLOSSARY.md)
 - **참조**: `PROJECT.md` 「평가 프로토콜」·「Hard boundary」, `docs/experiments/kobert-baseline.md`, `docs/data/data.md`
 
 ## 맥락

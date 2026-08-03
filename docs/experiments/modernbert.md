@@ -19,14 +19,49 @@
 - **모델**: `skt/A.X-Encoder-base` (한국어 ModernBERT, 컨텍스트 16,384, vocab 49,999, apache-2.0). 토크나이저 revision `9708f9c4`로 pin.
 - **데이터**: `ingyoun/patent-clean-text-modernbert-tokenized` (train 201,895 / val 11,162 / test 11,271). 사전토큰화 완료본을 그대로 소비 — 입력 조합·토크나이즈는 상류(`notebook/04_01_Prep_ModernBERT.ipynb`)에서 1회 수행. **truncation 없이 최대 10,523토큰**으로 저장돼 있어 `max_length`는 소비 시점(훈련 config)에서 건다.
 - **입력 필드**: `invention_title + ipc_main + abstract + claims` (공백 join, 빈 필드 skip) — KoBERT baseline과 동일 필드 집합.
-- ⚠️ **dtype 함정**(실측): base `skt/A.X-Encoder-base`는 **bf16으로 저장**돼 있고(config `torch_dtype: "bfloat16"`), transformers **v5는** `dtype` **미지정 시 체크포인트 dtype 그대로(bf16) 파라미터를 로드**한다(v4는 fp32로 업캐스트해 이 문제가 안 보였음). bf16 파라미터를 `bf16=True`(autocast)로 훈련하면 옵티마이저가 bf16 파라미터를 직접 갱신 → 작은 갱신량(lr 3e-5×grad)이 8비트 가수부에서 **underflow로 소멸** → 가중치가 얼어붙어 **상수(다수클래스) 분류기로 붕괴**한다(디스크 가중치 손상이 아니라 업데이트 소멸이 원인). **해결: 로드 시** `dtype=torch.float32` **명시** → fp32 마스터 가중치 + autocast(bf16) 연산 = 표준 혼합정밀 레시피. FA2는 autocast가 bf16 q/k/v를 공급하므로 fast path·속도 이득 그대로 유지되고, 추가 비용은 파라미터 메모리 2배뿐(연산시간 손해 사실상 없음). **fp16은 금지**(ModernBERT 활성값이 fp16 범위를 넘겨 NaN) — 안전 dtype은 **fp32(훈련 파라미터)·bf16(추론)**이다. 추론(`04_03`)도 `dtype=torch.float32` 로드 + `torch.autocast(bfloat16)`로 훈련과 동일 경로. 로드 시 transformers가 `Flash Attention 2 only supports torch.float16 and torch.bfloat16 … current dtype is torch.float32` **경고**를 내지만 무해하다 — 파라미터 저장 dtype에 대한 알림일 뿐 실제 연산은 autocast가 bf16으로 수행한다.
-- ⚠️ **토크나이저 특수토큰 함정**(실측): A.X-Encoder는 시퀀스를 `<s>`**(0) … 본문 …** `<\s>`**(1)** 로 감싼다. 마감 토큰은 **`eos_token_id`(=1)**이며, `tokenizer.sep_token_id`**는** `<sep>`**(=3)으로 실제 마감 토큰이 아니다** — 절단 복원에 이걸 쓰면 엉뚱한 토큰이 붙는다. 사전토큰화본을 `max_length`로 자를 때 단순 리스트 슬라이싱(`x[:max_len]`)은 꼬리의 `<\s>`를 버리므로(HF 표준 truncation은 보존) `x[:max_len-1] + [eos_token_id]`**로 마감**한다. 앞의 `<s>`는 index 0이라 슬라이싱해도 보존된다. 영향 자체는 작다(8,192 초과 문서가 1% 미만 + `classifier_pooling: "mean"`이라 토큰 1개 손실이 평균에 미치는 영향 미미).
-- **타깃**: 문서별 188 멀티핫(`labels`), sigmoid + BCE 계열 손실(baseline 정합을 위해 focal 옵션 포함 검토).
-- **고정 test 원칙**: KoBERT와 **같은 test split·같은** `kobert_len` **길이 bin** 위에서 평가(`../data/data.md` 「길이 슬라이스 bin」). 비교 축을 흔들지 않기 위해 bin은 A.X 토큰이 아니라 KoBERT 토큰으로 고정한다.
+- **타깃**: 문서별 188 다중-핫(`labels`), sigmoid + BCE 계열 손실(baseline 정합을 위해 focal 옵션 포함 검토).
+- **고정 test 원칙**: KoBERT와 **같은 test split, 같은 `kobert_len` 길이 bin** 위에서 평가한다(`../data/data.md` 「길이 bin」). 비교 축을 흔들지 않기 위해 bin은 A.X 토큰이 아니라 KoBERT 토큰으로 고정한다.
 - **평가**: `notebook/03_02_Metric.ipynb`(다중 라벨 micro/macro/sample-F1 + 길이 bin + top-1 weighted + LRAP/R-Precision). `tag`를 `axencoder_len{max_len}` 등으로 실험마다 유일하게 잡아 로짓 캐시 오염을 막는다.
-- ⚠️ **평가 입력도 훈련과 같은 `max_len`으로 절단**(실측): 사전토큰화 데이터셋은 truncation 없이 전체 토큰(최대 10,523)을 담으므로, 평가 시 test를 **훈련과 동일한 `max_len`으로 절단**(`x[:max_len-1]+[eos]`)한 뒤 추론한다. 이 절단을 빠뜨리면 512 모델에 전체 문서가 들어가 훈련 창과 어긋난 무의미한 평가가 된다(exp2에서 특히 치명적 — test의 ~72%가 512 초과). KoBERT는 512로 사전토큰화된 데이터를 써 절단이 불필요했으나 ModernBERT는 무절단본이라, 평가 노트북(`04_03`·`05_02`)이 `_truncate`로 훈련 `_prep`과 동일 절단을 재현한다.
-- ⚠️ **추론 `batch_size`는 지표 4번째 자리를 바꾼다**(실측): 평가·로짓 덤프는 **batch 8 고정**(`03_02`·`04_03`·`05_02`·`06_00` 전부 동일). `EvalCollator`의 동적 패딩(`padding=True`)이 배치 내 최장 문서에 맞추므로, 배치 크기를 바꾸면 패딩량과 행렬 shape이 바뀌고 fp16·bf16 autocast의 누산 순서·cuBLAS 커널 선택이 달라져 **로짓이 ~1e-4 흔들린다**. 그 자체는 무해하나 τ=0.5 경계와 top-1 argmax에서 문서 몇 건이 뒤집혀 지표가 4자리에서 어긋난다. 로짓 재덤프(`06_00`)에서 batch를 64로 올린 두 모델만 SSOT와 불일치했고(mb512 top-1 weighted-F1 0.8203→0.8199, micro 0.8601→0.8600), batch 8을 유지한 `modernbert-patent-len8192`만 5개 지표 전부 4자리 일치했다. 이 대조는 **체크포인트·절단·행 순서·dtype 경로가 정확하다는 증거**이기도 하다 — 아울러 토크나이저를 ckpt가 아닌 base(`skt/A.X-Encoder-base` revision `9708f9c4`)에서 로드해도 동일 결과임을 확인(8192 모델이 base 토크나이저로 완전 일치).
-- **인프라**: Colab L4 기본(장문은 메모리를 많이 써 24GB 안전, `../infra/colab-jobs.md`). 필요 시 Lightning Job.
+- **인프라**: Colab L4 기본(장문은 메모리를 많이 써 24GB가 안전하다, `../infra/colab-jobs.md`). 필요하면 Lightning Job.
+
+## 훈련·평가를 망가뜨리는 함정 네 가지
+
+네 가지 모두 **조용히 실패한다** — 예외가 나지 않고 지표만 틀린다. 새 런을 걸기 전에 확인한다.
+
+### ⚠️ 1. dtype — 모델이 상수 분류기로 붕괴한다
+
+**증상**: 훈련이 정상으로 보이는데 모델이 다수 클래스만 출력하는 상수 분류기가 된다.
+
+**원인**: `skt/A.X-Encoder-base`는 **bf16으로 저장**돼 있고(config `torch_dtype: "bfloat16"`), transformers **v5는 `dtype`을 지정하지 않으면 체크포인트 dtype 그대로 bf16으로 로드**한다(v4는 fp32로 올려 받아 이 문제가 보이지 않았다). bf16 파라미터를 `bf16=True`(autocast)로 훈련하면 옵티마이저가 bf16 파라미터를 직접 갱신하는데, 작은 갱신량(lr 3e-5 × 기울기)이 8비트 가수부에서 **언더플로로 소멸**한다. 가중치가 얼어붙는 것이며, 디스크의 가중치가 손상된 것이 아니라 업데이트가 사라지는 것이다.
+
+**조치**: 로드 시 `dtype=torch.float32`를 **명시**한다 → fp32 마스터 가중치 + autocast(bf16) 연산이라는 표준 혼합정밀 레시피가 된다.
+
+- FA2는 autocast가 bf16 q/k/v를 공급하므로 fast path와 속도 이득이 그대로 유지된다. 추가 비용은 파라미터 메모리 2배뿐이고 연산 시간 손해는 사실상 없다.
+- **fp16은 쓰지 않는다** — ModernBERT의 활성값이 fp16 범위를 넘겨 NaN이 난다. 안전한 조합은 훈련 파라미터 fp32, 추론 bf16이다.
+- 추론(`04_03`)도 `dtype=torch.float32` 로드 + `torch.autocast(bfloat16)`로 훈련과 같은 경로를 쓴다.
+- 로드 시 transformers가 `Flash Attention 2 only supports torch.float16 and torch.bfloat16 … current dtype is torch.float32` 경고를 내지만 무해하다. 파라미터 저장 dtype에 대한 알림일 뿐이고 실제 연산은 autocast가 bf16으로 수행한다.
+
+### ⚠️ 2. 특수토큰 — 절단하면 마감 토큰이 사라진다
+
+A.X-Encoder는 시퀀스를 `<s>`(0) … 본문 … `</s>`(1)로 감싼다. 마감 토큰은 **`eos_token_id`(=1)**이며, `tokenizer.sep_token_id`는 `<sep>`(=3)으로 **실제 마감 토큰이 아니다.** 절단 복원에 `sep_token_id`를 쓰면 엉뚱한 토큰이 붙는다.
+
+사전토큰화본을 `max_length`로 자를 때 단순 리스트 슬라이싱(`x[:max_len]`)은 꼬리의 `</s>`를 버린다(HF 표준 truncation은 보존한다). 따라서 `x[:max_len-1] + [eos_token_id]`로 마감한다. 앞의 `<s>`는 index 0이라 슬라이싱해도 보존된다.
+
+영향 자체는 작다 — 8,192를 넘는 문서가 1% 미만이고 `classifier_pooling`이 `"mean"`이라 토큰 하나의 손실이 평균에 미치는 영향이 미미하다.
+
+### ⚠️ 3. 평가 절단 — 빠뜨리면 평가가 무의미해진다
+
+사전토큰화 데이터셋은 절단 없이 전체 토큰(최대 10,523)을 담는다. 그러므로 평가할 때도 test를 **훈련과 동일한 `max_len`으로 절단**(`x[:max_len-1]+[eos]`)한 뒤 추론해야 한다.
+
+이 절단을 빠뜨리면 512 모델에 문서 전체가 들어가 훈련 창과 어긋난 무의미한 평가가 된다. 512 대조 런에서 특히 치명적인데, test의 약 72%가 512를 넘기 때문이다. KoBERT는 512로 사전토큰화된 데이터를 써서 절단이 불필요했으나 ModernBERT는 무절단본이라, 평가 노트북(`04_03`·`05_02`)이 `_truncate`로 훈련의 `_prep`과 동일한 절단을 재현한다.
+
+### ⚠️ 4. 추론 배치 크기 — 지표의 네 번째 자리가 바뀐다
+
+평가와 로짓 덤프는 **batch 8로 고정**한다(`03_02`·`04_03`·`05_02`·`06_00` 전부 동일).
+
+`EvalCollator`의 동적 패딩(`padding=True`)이 배치 내 최장 문서에 맞추므로, 배치 크기를 바꾸면 패딩량과 행렬 모양이 바뀐다. 그러면 bf16 autocast의 누산 순서와 cuBLAS 커널 선택이 달라져 **로짓이 약 1e-4 흔들린다**. 그 자체는 무해하지만, τ=0.5 경계와 top-1 argmax에서 문서 몇 건이 뒤집혀 지표가 네 번째 자리에서 어긋난다.
+
+로짓 재덤프(`06_00`)에서 batch를 64로 올린 두 모델만 SSOT와 불일치했고(mb512 top-1 weighted-F1 0.8203→0.8199, micro 0.8601→0.8600), batch 8을 유지한 `modernbert-patent-len8192`만 다섯 지표 전부 네 자리까지 일치했다. 이 대조는 **체크포인트·절단·행 순서·dtype 경로가 정확하다는 증거**이기도 하다. 아울러 토크나이저를 체크포인트가 아니라 base(`skt/A.X-Encoder-base` revision `9708f9c4`)에서 로드해도 결과가 같음을 확인했다.
 
 ## 실험 목록
 

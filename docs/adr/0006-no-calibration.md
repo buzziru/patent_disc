@@ -1,6 +1,7 @@
-# ADR-0006 — 로짓 캘리브레이션 배격
+# ADR-0006 — 로짓 캘리브레이션 미채택
 
 - **상태**: 수용
+- **용어·런 코드**: [GLOSSARY.md](../GLOSSARY.md)
 - **참조**: `PROJECT.md` 「닫힌 갈래」, `docs/experiments/no-train-analysis.md` B
 
 ## 맥락

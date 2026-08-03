@@ -19,7 +19,7 @@
 | eval 주기 | 1 epoch (12회) | 0.5 epoch (24회) | 0.5 epoch (24회) | 0.5 epoch (24회) |
 | 데이터 | 구 split (201,895 / 11,162 / 11,271) | 동일 | 동일 | 정리 split (201,616 / 11,132 / 11,244) |
 
-네 런 모두 sigmoid + focal(α=0.25, γ=2) · 188-way 다중레이블 · 12 epoch · linear 스케줄 · warmup_ratio 0.1 · weight_decay 0.01 · `classifier_dropout` 0.5다. 지표 세트는 갈린다 — KoBERT는 top-1 기반(Weighted F1), A.X 계열은 다중레이블 기반(Micro/Macro/Sample F1 · Empty Rate) + 비교 기준 런(top-1 Anchor Weighted F1). **KoBERT ↔ A.X 비교는 Anchor Weighted F1 ↔ KoBERT Weighted F1로만** 한다.
+네 런 모두 sigmoid + focal(α=0.25, γ=2) · 188-way 다중 라벨 · 12 epoch · linear 스케줄 · warmup_ratio 0.1 · weight_decay 0.01 · `classifier_dropout` 0.5다. 지표 세트는 갈린다 — KoBERT는 top-1 기반(Weighted F1), A.X 계열은 다중 라벨 기반(Micro/Macro/Sample F1 · Empty Rate) + 비교 기준 런(top-1 Anchor Weighted F1). **KoBERT ↔ A.X 비교는 Anchor Weighted F1 ↔ KoBERT Weighted F1로만** 한다.
 
 ## 현상 — 네 런 공통
 
@@ -59,7 +59,7 @@
 확신 오답 = 양성인데 p<0.1 · 음성인데 p>0.9인 원소.
 
 - **전체의 0.1%가 손실의 75~88%를 문다.** A.X 계열은 확신 오답 1,500~2,000개(전체의 0.07~0.09%)만으로 손실의 **73~82%**를 만든다.
-- **양성이 문 질량이 절반을 넘는다**(ASL 제외 51.8~55.6%). 양성 원소는 전체의 0.64%뿐인데 손실의 절반 이상을 낸다 — 극단 불균형 다중레이블에서 손실 총량은 소수 양성과 소수 확신 FP가 지배한다.
+- **양성이 문 질량이 절반을 넘는다**(ASL 제외 51.8~55.6%). 양성 원소는 전체의 0.64%뿐인데 손실의 절반 이상을 낸다 — 극단 불균형 다중 라벨에서 손실 총량은 소수 양성과 소수 확신 FP가 지배한다.
 - **따라서 "초기 수준으로 회귀"는 산술적 우연이다.** `11_01`의 첫 eval 0.000907은 *모든* 원소가 고르게 애매해서 나온 값이고(그 시점 micro 0.638 · empty rate 28.6%), 최종 0.000841은 원소의 99.93%가 사실상 손실을 내지 않고 0.07%가 확신을 갖고 틀려서 나온 값이다. 같은 스칼라가 전혀 다른 분포에서 나온다.
 - **KoBERT가 유일하게 다르다.** 확신 오답이 579개(0.027%)로 절반 이하이고 문 질량도 36.9%뿐이다. 손실 상승이 1.18×에 그친 이유가 여기 있다 — 포화가 덜 진행됐다.
 - ASL은 확률 이동 마진(m=0.05)과 γ_neg=4 때문에 확률 스케일 자체가 다른 손실이다. 포화도·최적 τ를 다른 런과 나란히 읽지 않는다([ADR-0009](../adr/0009-loss-axis-closure.md)).

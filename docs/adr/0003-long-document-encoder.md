@@ -1,6 +1,7 @@
 # ADR-0003 — 주 모델: 장문 인코더 `skt/A.X-Encoder-base`
 
 - **상태**: 수용
+- **용어·런 코드**: [GLOSSARY.md](../GLOSSARY.md)
 - **참조**: `PROJECT.md` 「long-document 축」·「모델」, `docs/experiments/modernbert.md`, `docs/experiments/modernbert-comparison.md` 「길이 vs 모델 분해」, `docs/experiments/no-train-analysis.md` C
 
 ## 맥락

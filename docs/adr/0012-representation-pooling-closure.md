@@ -1,7 +1,8 @@
 # ADR-0012 — 표현·풀링 축 종결: 장문 열화는 본질적 난이도
 
 - **상태**: 수용
-- **참조**: [ADR-0003](./0003-long-document-encoder.md)(long-document 축), [ADR-0006](./0006-no-calibration.md)(캘리브레이션 배격), [ADR-0009](./0009-loss-axis-closure.md)(카디널리티), `../experiments/longdoc-degradation.md`(발단·실측 SSOT), 노트북 `../../notebook/12_01_HiddenState_Dump.ipynb`(hidden-state 덤프)·`../../notebook/12_02_HiddenState_PoolingProbe.ipynb`(동결 풀링 프로브), `../../output/hidden_pooling_probe_test.json`(수치 SSOT)
+- **용어·런 코드**: [GLOSSARY.md](../GLOSSARY.md)
+- **참조**: [ADR-0003](./0003-long-document-encoder.md)(long-document 축), [ADR-0006](./0006-no-calibration.md)(캘리브레이션 미채택), [ADR-0009](./0009-loss-axis-closure.md)(카디널리티), `../experiments/longdoc-degradation.md`(발단·실측 SSOT), 노트북 `../../notebook/12_01_HiddenState_Dump.ipynb`(hidden-state 덤프)·`../../notebook/12_02_HiddenState_PoolingProbe.ipynb`(동결 풀링 프로브), `../../output/hidden_pooling_probe_test.json`(수치 SSOT)
 
 ## 맥락
 
@@ -22,9 +23,9 @@ hidden-state 덤프(`12_01`, test micro 0.8683으로 SSOT 정합해 복원·행�
 
 ## 검토한 대안
 
-- **학습형 attention 풀러(토큰 정보량 학습 가중)** — 디프리오리티. 고정 풀링 실측의 세 신호(max 무회수·concat 무상보·풀링 무관 기울기)가 토큰 특징에 회수가능 장문 신호가 없음을 시사해 헤드룸이 얇다. 완전 확정은 토큰 단위 hidden-state 덤프 + attention 프로브를 요구하나 기대 이득이 위 상한 대비 얇아 착수하지 않는다.
+- **학습형 attention 풀러(토큰 정보량 학습 가중)** — 우선순위 하향. 고정 풀링 실측의 세 신호(max 무회수·concat 무상보·풀링 무관 기울기)가 토큰 특징에 회수가능 장문 신호가 없음을 시사해 헤드룸이 얇다. 완전 확정은 토큰 단위 hidden-state 덤프 + attention 프로브를 요구하나 기대 이득이 위 상한 대비 얇아 착수하지 않는다.
 - **label-aware attention 헤드를 장문 축에 적용** — 미채택(같은 표현 헤드룸에 걸린다). 단 이를 **카디널리티 축**(k≥2 recall 결손)에서 재평가하는 것은 별개 갈래로 열어 둔다 — KD와 상보적이다.
 
 ## 결과·영향
 
-장문 열화 진단이 연 표현/풀링 갈래가 닫혔다. 남은 헤드룸은 k≥2 카디널리티([ADR-0009] 오라클-k +1.63pt)와 이를 훈련 시점에 겨냥하는 KD 축이며, 장문 축 자체는 운영 모델(exp1 8192)에 이미 채택돼 있다. 이 결정은 [ADR-0010](./0010-data-cleaning.md)의 class ambiguity 확증(장문 열화의 근원이 데이터 오류가 아니라 문제 난이도)과 같은 방향이다.
+장문 열화 진단이 연 표현/풀링 갈래가 닫혔다. 남은 헤드룸은 k≥2 카디널리티([ADR-0009] 오라클-k +1.63pt)와 이를 훈련 시점에 겨냥하는 KD 축이며, 장문 축 자체는 운영 모델(exp1 8192)에 이미 채택돼 있다. 이 결정은 [ADR-0010](./0010-data-cleaning.md)의 클래스 모호성 확증(장문 열화의 근원이 데이터 오류가 아니라 문제 난이도)과 같은 방향이다.

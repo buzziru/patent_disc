@@ -1,6 +1,7 @@
 # ADR-0007 — 손실 함수: 카디널리티 회수 겨냥
 
 - **상태**: 대체됨 (→ [ADR-0009](./0009-loss-axis-closure.md); ZLPR 실측 부정으로 손실 축 종결)
+- **용어·런 코드**: [GLOSSARY.md](../GLOSSARY.md)
 - **참조**: `docs/experiments/loss-function.md`(계획·프로토콜 SSOT), `docs/experiments/no-train-analysis.md` A
 
 ## 맥락
@@ -19,7 +20,7 @@
 
 ## 검토한 대안
 
-- **손실 계열 변경(softmax·정규화 reduction)** — 미채택. Menon et al.(NeurIPS 2019) 기준 BCE 계열이 precision-일관이고, 대규모 다중레이블 시스템이 모두 BCE를 쓴다.
+- **손실 계열 변경(softmax·정규화 reduction)** — 미채택. Menon et al.(NeurIPS 2019) 기준 BCE 계열이 precision-일관이고, 대규모 다중 라벨 시스템이 모두 BCE를 쓴다.
 - **DL2(dice)** — 3순위. 변형(macro vs pooled)을 못박기 전엔 매력(F1 대리)과 위험(배치 불안정)이 같은 축에 있다.
 
 ## 결과·영향 (예정)
