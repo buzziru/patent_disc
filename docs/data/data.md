@@ -146,7 +146,7 @@ zip(=`Mno`) 멤버 수를 세면 (문서, 라벨) 쌍이 Training 240,192 / Vali
 
 ## IPC 필드 — `ipc_main`과 `ipc_all`
 
-모델 입력에는 IPC 필드 중 `ipc_main` 하나만 들어간다. 원천 JSON에는 `ipc_all`(`|`로 구분된 복수 코드)이 함께 있으므로, **버려지는 보조 코드가 라벨 정보를 담는지**, 특히 **다중 라벨 문서의 추가 `Mno`를 가리키는지**를 측정했다. 구조와 폭은 raw zip 전수(224,328문서), 프로브와 융합은 정리 split 기준이다. 산출 `scripts/ipc_field_analysis.py` · SSOT `output/ipc_field_analysis.json`.
+모델 입력에는 IPC 필드 중 `ipc_main` 하나만 들어간다. 원천 JSON에는 `ipc_all`(`|`로 구분된 복수 코드)이 함께 있으므로, **버려지는 보조 코드가 라벨 정보를 담는지**, 특히 **다중 라벨 문서의 추가 `Mno`를 가리키는지**를 측정했다. 구조와 폭은 원본 zip 전수(224,328문서), 프로브와 융합은 정리 split 기준이다. 산출 `scripts/ipc_field_analysis.py` · SSOT `output/ipc_field_analysis.json`.
 
 ### 구조
 

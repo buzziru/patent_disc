@@ -88,7 +88,7 @@ full length는 극소수 장문(p99≈3,621, max 10,523)이 배치에 섞일 때
 
 실현된 비교 결과는 [`modernbert-comparison.md`](./modernbert-comparison.md)에 있고, 여기서는 각 축의 **설계 의도**를 고정한다.
 
-- **exp1 vs KoBERT**: 최종 headline — 장문 인코더가 baseline을 이기는가(다중 라벨 micro / top-1 weighted 각각).
+- **exp1 vs KoBERT**: 최종 대표 비교 — 장문 인코더가 baseline을 이기는가(다중 라벨 micro / top-1 weighted 각각).
 - **exp1 vs exp2**: **가장 중요한 ablation.** 같은 모델·같은 토크나이저에서 컨텍스트 길이만 다르므로, 개선분 중 **컨텍스트 길이의 순수 기여**를 분리한다. exp2가 KoBERT를 이미 이기면 개선의 상당 부분은 길이가 아니라 모델/토크나이저 우위라는 뜻(가설 반증 신호).
 - **exp1 vs exp3**: **형식 구조화의 기여.** 같은 길이에서 입력 포맷만 다르므로 exp3의 값은 **오로지 exp1과의 delta로만** 해석된다 — exp3은 단독으로 해석되는 실험이 아니다.
 - **길이 bin Δ(A.X − KoBERT)**: B0(≤512)에서 ≈0, B1→B3로 단조 증가하면 장문 가설 지지. 전 구간 균일 개선이면 길이 효과가 아니라 모델 자체 성능차(`../data/data.md` 「검증 로직」).

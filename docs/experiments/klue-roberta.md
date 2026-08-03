@@ -17,7 +17,7 @@
 ## 공통 프로토콜
 
 - **모델**: `klue/roberta-large`(revision `28d911204e9022eda172571ca8cc61eaffd942f7`로 pin). `model_type=roberta`, **337M 파라미터**, hidden 1,024 / 24 layers, vocab 32,000. 체크포인트 `architectures`는 `RobertaForMaskedLM`이라 `AutoModelForSequenceClassification` 로드 시 분류 head가 새로 초기화된다(정상 — 경고 무시).
-- **데이터**: `ingyoun/patent-clean-text-roberta-tokenized`(train 201,895 / val 11,162 / test 11,271). 상류 `notebook/07_01_Prep_RoBERTa.ipynb`가 1회 토큰화해 push. **truncation 없이 저장**(train max 10,275 / test max 8,951)돼 있어 `max_length`는 소비 시점에서 건다 — A.X 데이터셋과 동일한 2계층 정책.
+- **데이터**: `ingyoun/patent-clean-text-roberta-tokenized`(train 201,895 / val 11,162 / test 11,271). 상류 `notebook/07_01_Prep_RoBERTa.ipynb`가 1회 토큰화해 Hub에 올렸다. **truncation 없이 저장**(train max 10,275 / test max 8,951)돼 있어 `max_length`는 소비 시점에서 건다 — A.X 데이터셋과 동일한 2계층 정책.
 - **입력 필드**: `invention_title + ipc_main + abstract + claims`(공백 join, 빈 필드 skip) — KoBERT baseline·A.X와 동일 필드 집합.
 - **타깃**: 문서별 188 다중-핫(`labels`, float), focal loss(alpha=0.25, gamma=2) — baseline·exp1·exp2와 정합.
 - **고정 test 원칙**: 같은 test split·같은 `kobert_len` 길이 bin 위에서 평가(`../data/data.md` 「길이 슬라이스 bin」). 토큰화 데이터셋이 canonical `length_bin`(test 3,197 / 5,183 / 2,342 / 549)을 보존하므로 그 컬럼을 그대로 쓴다 — bin 축이 `kobert_len`에 고정돼 있어 토크나이저별로 bin을 따로 구할 일은 없다. RoBERTa 토큰 길이는 절단 규모를 보는 용도이고, 그 분포는 `../data/data.md` 「KLUE-RoBERTa 토크나이저」의 percentile로 관리한다.

@@ -2,10 +2,10 @@
 
 원본 zip을 그대로 두고 **정제 텍스트를 한 번만 만들어 HF Hub에 올린 뒤, 실험마다 그것을 받아 토큰화**하는 2계층 설계다.
 
-- **Layer 1**: raw zip을 1회 정제해 **토큰화하지 않은 텍스트 데이터셋**을 HF Hub(parquet)에 올린다. 모델·토크나이저와 무관하다.
+- **Layer 1**: 원본 zip을 1회 정제해 **토큰화하지 않은 텍스트 데이터셋**을 HF Hub(parquet)에 올린다. 모델·토크나이저와 무관하다.
 - **Layer 2**: 실험마다 그것을 streaming으로 받아 **소비 시점에 토큰화**한다.
 
-이렇게 하면 raw zip을 디스크에 풀지 않아도 되고, Colab에 데이터를 업로드할 필요가 없으며, 두 플랫폼의 데이터 로딩 코드가 하나로 통일된다.
+이렇게 하면 원본 zip을 디스크에 풀지 않아도 되고, Colab에 데이터를 업로드할 필요가 없으며, 두 플랫폼의 데이터 로딩 코드가 하나로 통일된다.
 
 기호·용어는 [GLOSSARY.md](../GLOSSARY.md), 데이터 원본 구조는 [data.md](./data.md), 실행 인프라는 [colab-jobs.md](../infra/colab-jobs.md)·[lightning-jobs.md](../infra/lightning-jobs.md)를 참조한다.
 
