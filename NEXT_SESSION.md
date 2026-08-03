@@ -2,9 +2,20 @@
 
 > 읽는 순서: `PROJECT.md`(SSOT) → 이 문서. 수치 SSOT는 `output/*.json`, 손실 축은 `docs/experiments/loss-function.md`, 결정 경위는 `docs/adr/`.
 
-## 지금 상태 — 계층 손실 축 종결, **다음 착수는 KD teacher soft target 덤프**
+## 지금 상태 — KD 축까지 종결, **다음 착수는 배포 모델 확정(8192 최종 런)**
 
-`14_01`(MCLoss 그룹 항)이 12 epoch 완주했고 실측·기제 분해·세 갈래 판정이 전부 기록돼 축이 닫혔다([ADR-0014](docs/adr/0014-hierarchy-loss-closure.md), SSOT [hierarchy-loss.md](docs/experiments/hierarchy-loss.md) · `output/hierarchy_loss_mass.json`·`output/hierarchy_loss_grad_budget.json`). **남은 활성 축은 KD와 모델·레시피뿐이다**(「KD 축」 절).
+계층 손실에 이어 **KD 축이 착수 전 게이트로 닫혔다**([ADR-0015](docs/adr/0015-kd-closure.md), SSOT [knowledge-distillation.md](docs/experiments/knowledge-distillation.md)「착수 전 게이트 둘」 · `output/kd_transfer_structure.json`·`output/kd_grad_budget.json`). **남은 레버는 모델·레시피뿐이며, 다음 GPU 작업은 정리 데이터 위 8192 최종 런이다**(「다음 작업」 절).
+
+### KD 축 종결 요약
+
+무훈련 헤드룸 게이트는 GREEN이었으나(앙상블 micro +0.73pt · k≥2 +1.42pt), 주 비용(exp1@8192 × 201,616 추론) 앞에 집행한 두 게이트가 축을 닫았다.
+
+- **정보 자체는 새것이다** — exp1 로짓 재조정의 **도달 불가 오라클**이 global τ +0.08pt · per-class τ +0.13pt로 앙상블 +0.73pt의 1/6이다. 닫힌 갈래(임계값·캘리브레이션)의 재탕이 아니다.
+- **그러나 형태가 전이에 최악이다** — 이득의 정체가 원소 716개(고침 449 · 깨뜨림 267, 순 +182)이고 전부 임계 근처다. 여유 \|q−0.5\| ≥ 0.2에서만 앙상블 결정을 채택하면 **+0.73pt → +0.01pt**로 소멸한다. teacher가 갈리는 문서 2,103건에서 oracle gap이 25.11pt인데 val 적합 라우팅 규칙이 **0.4%**(길이 bin × k) ~ **2.1%**(+ exp1 확신도)만 회수한다 — 설계가 주장한 teacher 특화는 집계 수준에서만 성립한다. 순이득도 104/188 클래스에 흩어져 있다.
+- **계획된 손실이 그 자리를 안 가르치고 λ로 고쳐지지 않는다** — λ=0.5의 distill 기울기 몫이 초기화 83% · 종점 **93.5%**(설계값이었다면 λ 0.017~0.065)인데, 정작 이득의 100%가 나오는 결정 갈림 밴드에는 예산의 **1.2%**만 간다. λ는 항 사이 배분만 바꾸고 distill 항 *안의* 쏠림은 못 바꾼다. 온도 T는 dark knowledge와 예산 포획을 함께 키운다(T=1.5에서 중간대 2.01→20.4개, 몫 93.5%→98.6%).
+- **재사용 자산**: 헤드룸 게이트는 **상한의 존재만** 검증한다. 상한을 잰 다음에는 같은 비용(GPU 0, 덤프 로짓)으로 **그 상한의 형태와 전달 경로**를 잰다 — `scripts/kd_transfer_structure.py`(여유 밴드 분해 · 재조정 도달 · 라우팅 전이 · 집중도)와 `scripts/kd_grad_budget.py`(예산 드리프트 · 축퇴도 · 신호 국소화 · 설계 λ)가 그 배터리이며, arm 추가는 상단 사전만 손대면 된다.
+
+### 직전 축 — 계층 손실 종결
 
 - **결과**: 정리 test micro **0.8467** = 앵커 `11_01`(0.8588) 대비 **−1.20pt**. 네 지표 모두 음수(macro −1.22 · sample −0.53 · anchor weighted −0.70pt). 문서 단위 paired bootstrap 4,000회 **CI95 [−1.604, −0.802]** · P(Δ≥0)=0.0000으로 시드 축 델타(−0.176pt)의 약 5.8배 — 도메인 축(−0.15pt, 잡음 내 = 효과 없음)과 달리 **실제 하락**이다. 그룹 항이 직접 최적화하는 `Lno` 유도 축도 평탄(0.9079→0.9074).
 - **기제 = 표적이 아니라 전달의 실패.** 표적은 얇지 않았다(FP의 60.4%). 세 겹으로 갈린다.
@@ -33,7 +44,8 @@
 | 장문 열화 | **디프리오리티** — 최장 문서도 정답 top-5 ~98% 잔존이라 표현 붕괴가 아니다. label-aware attention 풀링 헤드룸 <~0.5pt | [longdoc-degradation.md](docs/experiments/longdoc-degradation.md)(`10_02`) |
 | 계층 확장(`Lno` 게이트) | **하드 top-1 게이트 불채택** — 단일 `Lno` 게이트의 micro recall 상한 0.8590이 exp1 현재 recall 0.8697 아래(4모델 동일). 기존 2단계 추정(`Lno` 정확도 × 전체 오라클)은 1단계 실패를 이중 계상한 결함 추정량이고, 조건부로 교정하면 flat과 **항등**이라 판정력이 0이었다. 라벨 형상도 하드 게이팅을 배제한다(두 단계 모두 다중레이블이어야 하고, 그러면 표현력이 flat과 같다). **게이트 없는 형태(보조 손실)는 `14_01`로 측정돼 기각됐고**([ADR-0014](docs/adr/0014-hierarchy-loss-closure.md)), **훈련된 조건부 2단계**는 추론 구조 변경을 동반해 이 행에 걸린다. 2단계 상한 +3.48pt는 sibling 질량인데 주 지표 결손의 다수는 형제가 아니라 cross-`Lno` 두 번째 라벨이다(k≥2 FN 1,064 중 cross 589·형제 475) | [ADR-0002](docs/adr/0002-flat-multilabel-hierarchy.md) · [modernbert-comparison.md](docs/experiments/modernbert-comparison.md)「오류 구조」 · [data.md](docs/data/data.md)「계층 형상」(`scripts/hierarchy_conditional.py`·`scripts/multilabel_shape.py`) |
 | 도메인 사전학습 | **종결** — 자체 코퍼스 TAPT가 정리 test micro 0.8572로 앵커 0.8588 대비 −0.15pt(판정선 +0.4pt 미달). 기제는 코퍼스 동일성(TAPT 802M 대 파인튜닝 1,116M 토큰, 같은 문서). MLM 체크포인트 교체·기성 `KorPatElectra` 모두 불채택 | [ADR-0013](docs/adr/0013-domain-pretraining-closure.md) · [domain-pretraining.md](docs/experiments/domain-pretraining.md)(`13_01`·`13_02`) |
-| 계층 손실(보조 손실) | **종결** — MCLoss 그룹 항이 정리 test micro 0.8467로 앵커 대비 −1.20pt(잡음 밖). 기제는 기울기 예산 포획(종점 67.9%)·포화된 목적(기울기의 46.9%가 이미 충족된 그룹)·형제 축 사각지대(조건부 형제 top-1 −0.53pt). λ 변형·BCE 기반 교체 모두 상한이 판정선 아래. 계층 축은 추론 구조·훈련 신호 양쪽에서 닫혔다 | [ADR-0014](docs/adr/0014-hierarchy-loss-closure.md) · [hierarchy-loss.md](docs/experiments/hierarchy-loss.md)(`14_01`) |
+| 계층 손실(보조 손실) | **종결** — MCLoss 그룹 항이 정리 test micro 0.8467로 앵커 대비 −1.20pt(잡음 밖). 기제는 기울기 예산 포획(종점 67.9%)·포화된 목적(기울기의 46.9%가 이미 충족된 그룹)·형제 축 사각지대(조건부 형제 top-1 −0.53pt). λ 변형·BCE 기반 교체 모두 상한이 판정선 아래. **문헌 대조로 계열 전체까지 닫힌다** — 깊이 2·표본 다수·불균형 없음에서 계층 이득은 +0.19pt(CoNLL 2024)이고, 계층 손실의 이득은 오류 심각도라 flat leaf micro-F1에 등록되지 않는다(CHAMP). 계층 축은 추론 구조·훈련 신호 양쪽에서 닫혔다 | [ADR-0014](docs/adr/0014-hierarchy-loss-closure.md) · [hierarchy-loss.md](docs/experiments/hierarchy-loss.md)(`14_01`) |
+| 지식 증류(KD) | **종결(착수 전 게이트)** — 헤드룸은 실재하고 새 정보다(앙상블 +0.73pt, exp1 재조정 도달 불가 오라클 +0.13pt). 그러나 순 182개 원소가 임계 근처에 몰려(여유 0.2 이상만 채택 시 +0.01pt) 라우팅 불가(oracle gap 25.11pt 중 0.4~2.1% 회수)하고 104/188 클래스에 흩어져 있으며, λ=0.5가 종점 기울기의 93%를 distill 항에 주면서 이득 밴드에는 1.2%만 쓴다(λ로 교정 불가). teacher 덤프·student 2런 미착수 | [ADR-0015](docs/adr/0015-kd-closure.md) · [knowledge-distillation.md](docs/experiments/knowledge-distillation.md)「착수 전 게이트 둘」 |
 | 데이터 클리닝 | **완료·Hub 반영 완료** — 입력 동일 336문서 제거. train 201,616 / val 11,132 / test 11,244, 잔여 충돌 0 | [ADR-0010](docs/adr/0010-data-cleaning.md)(`10_03`) |
 | 코드 구조 | **src 전환 완료** — `src/patent_train`(config·backbones·data·model·losses·metrics·trainer·runner·probe). 노트북은 `TrainConfig` 하나로 실행 | [ADR-0011](docs/adr/0011-resource-constrained-methodology.md) · [runpod-jobs.md](docs/infra/runpod-jobs.md) |
 
@@ -54,13 +66,14 @@
 
 - exp1~11_01은 **구 test(11,271)** 기준이다(`11_01`만 정리 test 11,244). 정리 test 재계산값은 exp1 0.8683 · exp2 0.8599 · KoBERT 0.8500이며 서열·격차는 불변이다(`output/headline_cleaned_test.json`).
 
-## KD 축 (신규) — 게이트 GREEN, student 대기
+## 다음 작업 — 배포 모델 확정(8192 최종 런)
 
-손실 축이 못 넘은 **k≥2 카디널리티**를 이종 앙상블 증류로 겨냥한다. 앙상블은 훈련 시점 teacher로만 쓰고 배포는 단일 student — 앙상블 배포([ADR-0005](docs/adr/0005-no-ensemble.md))의 재제안이 아니다. 계획·프로토콜 [knowledge-distillation.md](docs/experiments/knowledge-distillation.md).
+모든 실험 축이 닫혀 남은 것은 **산출물 모델을 만드는 일**이다. exp1(8192, 0.8685/정리 0.8683)이 최고 실측이나 **정리 이전 데이터**(train 201,895)로 훈련됐으므로, 배포 모델은 정리 데이터(201,616) 위에서 다시 나와야 한다.
 
-- **게이트(무훈련) GREEN**: teacher(exp1/ASL/KoBERT) 로짓 앙상블이 정리 test(11,244)에서 최고 단일 대비 **micro +0.73pt · k≥2 +1.42pt**. 이득이 다양성(오류 탈상관, oracle-any top1 +4.70pt)에서 오고 **전 length-bin에 분포**(B0–B2 포함 → 2048 student 전이 가능). SSOT `output/kd_gate_ensemble.json`.
-- **확정 설계**: teacher 3종 고정 · soft target = **확률공간** 가중 앙상블(exp1 0.5/ASL 0.2/KoBERT 0.3, val 선택) · 손실 `(1−λ)·focal + λ·BCE(p,q)` λ=0.5 · **student len2048**(전이 가능·8192 대비 저비용) · 필수 2런(2048 focal 통제 + 2048 KD).
-- **다음 착수 = teacher soft target을 정리 train(201,616)에 덤프.** exp1@8192 추론이 주 비용(GPU 수 시간), ASL·KoBERT@512 저렴. 순차 샘플러로 행 순서를 `document_id`에 고정(순열 함정).
+- **레시피 리스크**: 신 레시피(eff_batch 128 · lr 4.8e-4)는 **512에서만 검증**됐고 8192에서 돈 적이 없다. exp1은 구 레시피(eff8 · lr 3e-5)다. 8192에서는 같은 eff_batch라도 토큰 수가 16배라 per-step 기울기 잡음과 발산 임계가 다를 수 있다.
+- **선행 진단 = 8192 LR range test.** [ADR-0011](docs/adr/0011-resource-constrained-methodology.md)「전이 가능한 lr 판정법」이 처방한 horizon-분리 프로브다. 최종 런과 같은 조건(len8192 · eff128 · 정리 데이터)에서 lr을 수백 스텝에 걸쳐 지수적으로 올리며 train loss를 관측한다(0.3 epoch 이하 ≈ 1시간 미만). 산출은 최적 lr이 아니라 **4.8e-4가 발산 임계 대비 어디에 있는가**이며, 그것이 지금 필요한 양이다.
+- **512 풀 HPO는 착수하지 않는다.** 판정 해상도(운영 판정선 0.6pt), 짧은 프로브의 이중 배제(시드 스프레드 epoch 1–2에서 2.1pt · 고정-에폭 감쇠의 고lr 편향 — [ADR-0011]), 풀런 비용(조합당 A40 8h20m)이 겹쳐 탐색으로서 값이 서지 않는다. 무엇보다 512에서 튜닝해 8192로 옮기는 것은 **고치려는 미검증 전이를 재생산**한다.
+- **스케줄러는 유지한다** — linear · warmup_ratio 0.1 · 12 epoch. cosine 교체는 파인튜닝에서 근거가 얇고, WSD(horizon 분리)는 근거 기반이 LLM 사전학습이라 최종 런에서 처음 시도할 대상이 아니다. epoch horizon 확대는 8192 비용(대략 20h 안팎 추정 — 토큰이 512 대비 1.7배 + 장문 오버헤드, 실측 없음)을 감안해 보류한다.
 
 ## 도메인 사전학습 축 — 종결([ADR-0013](docs/adr/0013-domain-pretraining-closure.md))
 
@@ -75,8 +88,8 @@
 
 ## 남은 일
 
-1. **KD teacher soft target 덤프 — 다음 착수.** 계층 손실 축이 닫혀 활성 축은 KD와 모델·레시피뿐이다. 게이트는 GREEN이고 설계가 확정돼 있다(「KD 축」 절) — 정리 train 201,616 문서에 teacher 3종 로짓을 덤프하는 것이 다음 GPU 작업이다. exp1@8192 추론이 주 비용이고 ASL·KoBERT@512는 저렴하며, 순차 샘플러로 행 순서를 `document_id`에 고정한다(순열 함정).
-   - **재사용 가능한 도구**: `scripts/hierarchy_loss_mass.py`에 `paired_bootstrap`(문서 단위 CI)과 `matched_operating_point`(작동점 정규화), `scripts/hierarchy_loss_grad_budget.py`에 기울기 예산·포화도·순위 국소화(P@1을 `Lno` 축과 조건부 형제 축으로 분해)가 들어 있다. arm 추가는 두 스크립트 모두 상단 `MODELS`/`TAGS` 사전만 손대면 된다.
+1. **8192 LR range test → 최종 런 — 다음 착수.** 모든 실험 축이 닫혀 남은 GPU 작업은 배포 모델 확정뿐이다(「다음 작업」 절). 순차 샘플러로 로짓 행 순서를 `document_id`에 고정한다(순열 함정).
+   - **재사용 가능한 도구**: `scripts/hierarchy_loss_mass.py`에 `paired_bootstrap`(문서 단위 CI)과 `matched_operating_point`(작동점 정규화), `scripts/hierarchy_loss_grad_budget.py`에 기울기 예산·포화도·순위 국소화(P@1을 `Lno` 축과 조건부 형제 축으로 분해), `scripts/kd_transfer_structure.py`에 여유 밴드 분해·재조정 도달·라우팅 전이·집중도, `scripts/kd_grad_budget.py`에 손실 항별 기울기 몫·축퇴도·신호 국소화·설계 λ가 들어 있다. arm 추가는 상단 `MODELS`/`TAGS` 사전만 손대면 된다.
 2. **오류 부분집합의 관찰 지표 규약은 교정됐다 — 어떤 축이든 절대량·문서당으로 잰다.** `14_01`이 훈련 중 관찰 지표를 share(표적/전체 FP)로 뒀던 것이 결함이었다(「함정」의 share 항목). 교정된 프로토콜은 [hierarchy-loss.md](docs/experiments/hierarchy-loss.md)「프로토콜」에 있고 KD 런에도 그대로 적용한다. `14_01` 노트북은 실행 기록이라 수정하지 않았다.
 3. **`11_01` 로짓은 행 축이 정상이다 — 재덤프 불필요.** `output/logits_modernbert-patent-len512-b128_{val,test}.npy`를 정리 데이터셋 행 순서의 라벨과 대면시키면 test micro/macro/sample이 SSOT(0.858759 / 0.856503 / 0.873791)와 1e-6까지 일치하고 val도 0.8623으로 정상이다(순열이면 ~0.006이 나온다). 정리 로짓의 행 축 SSOT는 `output/doc_ids_clean_{val,test}.json`이며 데이터셋 `document_id` 순서와 일치한다(구 `doc_ids_*`는 구 로짓 재현용 유지, `docs/data/data.md`「주의」). **비교선은 정리 test 재계산값(exp2 0.8599)**이다 — `11_01`은 정리 test(11,244)에서 평가되므로 구 test 수치(0.8601)와 직접 대면 안 된다.
 4. **`11_01`에는 판정할 두 축이 겹쳐 있다** — 데이터 클리닝과 신 레시피가 동시에 바뀐 런이다. 클리닝 효과는 볼륨(train 0.04%)이 작아 aggregate에서 분리되지 않으므로([ADR-0010](docs/adr/0010-data-cleaning.md)), 연루 클래스(특히 EB01) per-class F1을 paired로 대조한다.
@@ -103,14 +116,15 @@
 - **주 비교 지표는 멀티라벨 micro-F1.** top-1 weighted-F1과 P@1/3/5는 벤더 baseline의 레거시이며 병기용(anchor).
 - **임계값은 레버가 아니다.** global τ 오라클 micro 헤드룸 +0.0000~+0.0008. 문서 상대 임계값(`p ≥ α·p_max`)은 sample-F1을 +0.66~0.85pt 올리나 micro는 −0.23~−0.52pt로 떨어뜨린다.
 - **카디널리티 헤드룸은 회수 불가로 종결.** 손실·추론 디코딩 두 경로 모두 부정이며, 분리에는 문서별 k가 필요하나 닫힌 갈래다.
-- **앙상블은 채택하지 않는다.** 단일 모델 운영 요구. 3모델 로짓평균 앵커 weighted-F1 +0.71pt이나 추론 비용 3배.
+- **앙상블은 채택하지 않는다.** 단일 모델 운영 요구. 3모델 로짓평균 앵커 weighted-F1 +0.71pt이나 추론 비용 3배. **증류로도 옮겨지지 않는다** — 이득은 새 정보이나(재조정 오라클 +0.13pt) 임계 근처의 얕은 밴드에 몰려 라우팅 불가이고, 혼합 손실이 그 밴드에 예산의 1.2%만 쓴다([ADR-0015](docs/adr/0015-kd-closure.md)).
+- **헤드룸 게이트는 상한의 존재만 검증한다.** 이득이 실재해도 (1) 얕은 결정 밴드에 몰려 있고 (2) 관측 축으로 라우팅되지 않으며 (3) 손실이 그 밴드에 예산을 안 쓰면 회수되지 않는다. 상한을 잰 다음에는 같은 비용(GPU 0, 덤프 로짓)으로 **그 상한의 형태와 전달 경로**를 잰다.
 - **추가 헤드룸의 레버는 모델·레시피다** — 측정된 최대 단일 이득은 길이(exp1 len8192, exp2 대비 +0.84pt).
 - 나머지 닫힌 갈래는 `PROJECT.md` 「닫힌 갈래」 표를 따른다. **새 근거 없이 다시 제안하지 않는다.**
 
 ## 열린 질문
 
-- **주 모델을 8192·2048·512 중 무엇으로 갈지** — 운영 단일 모델의 추론 비용 대 성능. KD 축이 열려 **2048 KD student**가 후보로 추가됐다(게이트: 앙상블 이득이 전 bin 분포 → 2048로 전이 가능·저비용). 8192는 +0.84pt 길이 이득이나 신 레시피 재훈련이 걸린다(8192 실측은 구 레시피뿐). student 길이는 [knowledge-distillation.md](docs/experiments/knowledge-distillation.md) 판정으로 결정한다.
-- **훈련 길이·스케줄 형태**(linear 유지 여부) — exp1이 12에폭을 소진한 사실과 함께 검토한다.
+- **주 모델을 8192·2048·512 중 무엇으로 갈지** — 운영 단일 모델의 추론 비용 대 성능. 8192는 +0.84pt 길이 이득이나 신 레시피 재훈련이 걸리고(8192 실측은 구 레시피뿐), 2048은 >2048 문서가 4.9%뿐이라 길이 이득의 대부분을 저비용으로 가져갈 것으로 보이나 **부채 크기가 미측정**이다(KD 통제군이 그 측정이었으나 축이 닫히며 미집행).
+- **훈련 길이·스케줄 형태**(linear 유지 여부) — exp1이 12에폭을 소진한 사실과 함께 검토한다. 단 linear decay-to-zero에서는 마지막 구간 개선이 **어닐링 아티팩트**라 소진 사실만으로 undertrain을 단정하지 못한다.
 - **KLUE-RoBERTa-base 대조군**(선택) — 성능이 아니라 주장 방어(크기 confound 제거)가 목적. 예산이 남을 때만.
 
 ## 작업 규약

@@ -1,0 +1,320 @@
+{
+  "gate": "kd_transfer_structure",
+  "question": "앙상블 이득(+0.73pt)이 단일 student로 옮겨갈 수 있는 구조인가 — 헤드룸 게이트가 묻지 않은 두 번째 질문.",
+  "test_n": 11244,
+  "val_n": 11132,
+  "tau": 0.5,
+  "teachers": {
+    "exp1": "modernbert-patent-len8192",
+    "asl": "modernbert-patent-len512-asl",
+    "kobert": "kobert-patent-baseline_len512"
+  },
+  "weights": {
+    "exp1": 0.5,
+    "asl": 0.2,
+    "kobert": 0.3
+  },
+  "primary": "exp1",
+  "script": "scripts/kd_transfer_structure.py",
+  "verify": "teacher 3종·앙상블 test micro == output/kd_gate_ensemble.json · 로짓 행 축 == doc_ids_clean_{val,test}.json",
+  "composition": {
+    "micro_base": 0.8683,
+    "micro_ens": 0.8756,
+    "gain_pt": 0.73,
+    "fixed": {
+      "n": 449,
+      "knife_edge": 176,
+      "knife_edge_share": 0.392,
+      "median_margin": 0.0633,
+      "two_vs_one": 375,
+      "two_vs_one_share": 0.8352
+    },
+    "broken": {
+      "n": 267,
+      "knife_edge": 136,
+      "knife_edge_share": 0.5094,
+      "median_margin": 0.0479,
+      "two_vs_one": 215,
+      "two_vs_one_share": 0.8052
+    },
+    "net_elements": 182,
+    "two_vs_one_precision": 0.6356,
+    "reference_all_correct_median_margin": 0.4957,
+    "gain_by_margin_band": {
+      "m>=0.0": {
+        "micro": 0.8756,
+        "pt": 0.73,
+        "adopted": 2113872
+      },
+      "m>=0.02": {
+        "micro": 0.8749,
+        "pt": 0.65,
+        "adopted": 2113593
+      },
+      "m>=0.05": {
+        "micro": 0.8739,
+        "pt": 0.55,
+        "adopted": 2113133
+      },
+      "m>=0.1": {
+        "micro": 0.8711,
+        "pt": 0.28,
+        "adopted": 2112388
+      },
+      "m>=0.2": {
+        "micro": 0.8685,
+        "pt": 0.01,
+        "adopted": 2110533
+      }
+    },
+    "knife_note": "knife-edge = |q-0.5| < 0.05",
+    "margin_note": "gain_by_margin_band = 여유 m 이상에서만 앙상블 결정을 채택했을 때의 micro. m을 조금만 올려도 이득이 사라지면 이득이 임계 근처의 얕은 뒤집기에 실렸다는 뜻."
+  },
+  "calibration_reach": {
+    "base_test": 0.8683,
+    "ensemble_test": 0.8756,
+    "gain_pt": 0.73,
+    "global_tau_oracle": {
+      "tau": 0.4,
+      "micro": 0.8691,
+      "pt": 0.08
+    },
+    "global_tau_val_fit": {
+      "tau": 0.48,
+      "micro": 0.8682,
+      "pt": -0.01
+    },
+    "per_class_tau_oracle": {
+      "micro": 0.8696,
+      "pt": 0.13
+    },
+    "per_class_tau_val_fit": {
+      "micro": 0.8532,
+      "pt": -1.51
+    },
+    "note": "재조정이 앙상블 이득에 닿으면 KD가 아니라 닫힌 캘리브레이션 축이다. 오라클은 도달 불가 상한이며 판정은 val 적합분으로 한다."
+  },
+  "routing": {
+    "n_disagree_test": 2103,
+    "disagree_share": 0.187,
+    "on_disagree": {
+      "exp1_p@1": 0.6738,
+      "asl_p@1": 0.5991,
+      "kobert_p@1": 0.6125
+    },
+    "oracle_any_p@1": 0.9249,
+    "oracle_gap_pt": 25.11,
+    "rules": {
+      "length_bin x k": {
+        "routed_p@1": 0.6748,
+        "delta_vs_primary_pt": 0.1,
+        "recovery_of_oracle_gap": 0.0038,
+        "n_cells": 8,
+        "cells_not_primary": 2
+      },
+      "+ exp1 confidence quartile": {
+        "routed_p@1": 0.679,
+        "delta_vs_primary_pt": 0.52,
+        "recovery_of_oracle_gap": 0.0208,
+        "n_cells": 29,
+        "cells_not_primary": 6
+      }
+    },
+    "note": "라우팅 이득이 0 근처면 승자가 문서별 무작위(분산 평균)이고, 크면 관측 축으로 예측되는 특화다. 상한은 oracle-any. 판정은 두 특징 집합 중 강한 쪽으로 한다."
+  },
+  "concentration": {
+    "length_bin": {
+      "1024-2048": {
+        "fixed": 105,
+        "broken": 73,
+        "net": 32,
+        "fixed_share": 0.2339,
+        "split_share": 0.2486,
+        "obs_over_exp": 0.941
+      },
+      "512-1024": {
+        "fixed": 197,
+        "broken": 114,
+        "net": 83,
+        "fixed_share": 0.4388,
+        "split_share": 0.4344,
+        "obs_over_exp": 1.01
+      },
+      "<=512": {
+        "fixed": 123,
+        "broken": 68,
+        "net": 55,
+        "fixed_share": 0.2739,
+        "split_share": 0.2668,
+        "obs_over_exp": 1.027
+      },
+      ">2048": {
+        "fixed": 24,
+        "broken": 12,
+        "net": 12,
+        "fixed_share": 0.0535,
+        "split_share": 0.0503,
+        "obs_over_exp": 1.063
+      }
+    },
+    "cardinality": {
+      "k=1": {
+        "fixed": 277,
+        "broken": 181,
+        "net": 96,
+        "fixed_share": 0.6169,
+        "split_share": 0.6397,
+        "obs_over_exp": 0.964
+      },
+      "k>=2": {
+        "fixed": 172,
+        "broken": 86,
+        "net": 86,
+        "fixed_share": 0.3831,
+        "split_share": 0.3603,
+        "obs_over_exp": 1.063
+      }
+    },
+    "lno": {
+      "L0": {
+        "fixed": 31,
+        "broken": 33,
+        "net": -2,
+        "fixed_share": 0.069,
+        "split_share": 0.0894,
+        "obs_over_exp": 0.772
+      },
+      "L1": {
+        "fixed": 15,
+        "broken": 4,
+        "net": 11,
+        "fixed_share": 0.0334,
+        "split_share": 0.0265,
+        "obs_over_exp": 1.259
+      },
+      "L2": {
+        "fixed": 32,
+        "broken": 13,
+        "net": 19,
+        "fixed_share": 0.0713,
+        "split_share": 0.0628,
+        "obs_over_exp": 1.134
+      },
+      "L3": {
+        "fixed": 25,
+        "broken": 13,
+        "net": 12,
+        "fixed_share": 0.0557,
+        "split_share": 0.0531,
+        "obs_over_exp": 1.049
+      },
+      "L4": {
+        "fixed": 23,
+        "broken": 13,
+        "net": 10,
+        "fixed_share": 0.0512,
+        "split_share": 0.0503,
+        "obs_over_exp": 1.019
+      },
+      "L5": {
+        "fixed": 11,
+        "broken": 13,
+        "net": -2,
+        "fixed_share": 0.0245,
+        "split_share": 0.0335,
+        "obs_over_exp": 0.731
+      },
+      "L6": {
+        "fixed": 23,
+        "broken": 16,
+        "net": 7,
+        "fixed_share": 0.0512,
+        "split_share": 0.0545,
+        "obs_over_exp": 0.94
+      },
+      "L7": {
+        "fixed": 54,
+        "broken": 29,
+        "net": 25,
+        "fixed_share": 0.1203,
+        "split_share": 0.1159,
+        "obs_over_exp": 1.037
+      },
+      "L8": {
+        "fixed": 36,
+        "broken": 22,
+        "net": 14,
+        "fixed_share": 0.0802,
+        "split_share": 0.081,
+        "obs_over_exp": 0.99
+      },
+      "L9": {
+        "fixed": 28,
+        "broken": 18,
+        "net": 10,
+        "fixed_share": 0.0624,
+        "split_share": 0.0642,
+        "obs_over_exp": 0.971
+      },
+      "L10": {
+        "fixed": 44,
+        "broken": 23,
+        "net": 21,
+        "fixed_share": 0.098,
+        "split_share": 0.0936,
+        "obs_over_exp": 1.047
+      },
+      "L11": {
+        "fixed": 30,
+        "broken": 24,
+        "net": 6,
+        "fixed_share": 0.0668,
+        "split_share": 0.0754,
+        "obs_over_exp": 0.886
+      },
+      "L12": {
+        "fixed": 21,
+        "broken": 6,
+        "net": 15,
+        "fixed_share": 0.0468,
+        "split_share": 0.0377,
+        "obs_over_exp": 1.24
+      },
+      "L13": {
+        "fixed": 16,
+        "broken": 13,
+        "net": 3,
+        "fixed_share": 0.0356,
+        "split_share": 0.0405,
+        "obs_over_exp": 0.88
+      },
+      "L14": {
+        "fixed": 47,
+        "broken": 20,
+        "net": 27,
+        "fixed_share": 0.1047,
+        "split_share": 0.0936,
+        "obs_over_exp": 1.119
+      },
+      "L15": {
+        "fixed": 9,
+        "broken": 6,
+        "net": 3,
+        "fixed_share": 0.02,
+        "split_share": 0.0209,
+        "obs_over_exp": 0.957
+      },
+      "L16": {
+        "fixed": 4,
+        "broken": 1,
+        "net": 3,
+        "fixed_share": 0.0089,
+        "split_share": 0.007,
+        "obs_over_exp": 1.276
+      }
+    },
+    "class_top10_net_share": 0.3132,
+    "classes_with_positive_net": 104,
+    "note": "obs_over_exp = (그 축이 가진 고침 몫) / (그 축이 가진 갈림 몫). 1.0 근처면 균등(우연), 크게 벗어나면 집중(규칙성)."
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "gate": "kd_grad_budget",
+  "question": "KD 혼합 손실의 lam=0.5가 종점에서 무엇이 되는가 — [ADR-0014]가 계층 손실에서 실측한 예산 포획이 KD 항에서 반복되는가.",
+  "n": 11244,
+  "split": "test",
+  "lambda": 0.5,
+  "alpha": 0.25,
+  "gamma": 2,
+  "teachers": {
+    "exp1": "modernbert-patent-len8192",
+    "asl": "modernbert-patent-len512-asl",
+    "kobert": "kobert-patent-baseline_len512"
+  },
+  "weights": {
+    "exp1": 0.5,
+    "asl": 0.2,
+    "kobert": 0.3
+  },
+  "endpoints": {
+    "11_01(512 focal)": "modernbert-patent-len512-b128",
+    "exp1(8192 focal)": "modernbert-patent-len8192"
+  },
+  "ensemble_micro": 0.8756,
+  "mid_band": [
+    0.05,
+    0.95
+  ],
+  "mid_per_doc_T1": 2.009,
+  "script": "scripts/kd_grad_budget.py",
+  "verify": "앙상블 test micro == output/kd_gate_ensemble.json · 로짓 행 축 == doc_ids_clean_test.json · focal 구현 == scripts/hierarchy_loss_grad_budget.py",
+  "budget": {
+    "init_s0.3": {
+      "focal": 0.047743,
+      "distill": 0.704286,
+      "value_ratio": 14.752,
+      "grad_ratio": 6.354,
+      "distill_grad_share": 0.864
+    },
+    "init_s0.5": {
+      "focal": 0.05529,
+      "distill": 0.723486,
+      "value_ratio": 13.085,
+      "grad_ratio": 6.005,
+      "distill_grad_share": 0.8572
+    },
+    "init_s0.7": {
+      "focal": 0.065957,
+      "distill": 0.751097,
+      "value_ratio": 11.388,
+      "grad_ratio": 5.64,
+      "distill_grad_share": 0.8494
+    },
+    "init_s0.9": {
+      "focal": 0.079159,
+      "distill": 0.786047,
+      "value_ratio": 9.93,
+      "grad_ratio": 5.316,
+      "distill_grad_share": 0.8417
+    },
+    "init_s1.1": {
+      "focal": 0.094333,
+      "distill": 0.82727,
+      "value_ratio": 8.77,
+      "grad_ratio": 5.05,
+      "distill_grad_share": 0.8347
+    },
+    "init_s1.3": {
+      "focal": 0.110997,
+      "distill": 0.873789,
+      "value_ratio": 7.872,
+      "grad_ratio": 4.838,
+      "distill_grad_share": 0.8287
+    },
+    "11_01(512 focal)": {
+      "focal": 0.000852,
+      "distill": 0.0465,
+      "value_ratio": 54.572,
+      "grad_ratio": 13.695,
+      "distill_grad_share": 0.932
+    },
+    "exp1(8192 focal)": {
+      "focal": 0.00099,
+      "distill": 0.048589,
+      "value_ratio": 49.072,
+      "grad_ratio": 14.415,
+      "distill_grad_share": 0.9351
+    }
+  },
+  "degeneracy": {
+    "11_01(512 focal)": {
+      "cosine_grad_q_vs_y": 0.35373,
+      "l1_diff_over_l1_y": 2.1668,
+      "note": "q의 기울기가 y의 기울기와 같은 방향·크기면 distill 항은 하드 라벨 BCE다."
+    },
+    "exp1(8192 focal)": {
+      "cosine_grad_q_vs_y": 0.25771,
+      "l1_diff_over_l1_y": 2.8732,
+      "note": "q의 기울기가 y의 기울기와 같은 방향·크기면 distill 항은 하드 라벨 BCE다."
+    }
+  },
+  "signal_localization": {
+    "11_01(512 focal)": {
+      "n_contradict": 3388,
+      "grad_share_on_contradict": 0.0528,
+      "n_diverge": 2154,
+      "grad_share_on_diverge": 0.0751,
+      "note": "diverge = 앙상블과 종점 모델의 tau=0.5 결정이 갈리는 원소. 앙상블 이득은 전부 이 밴드에서 나오므로, 여기에 실리는 기울기 몫이 KD가 이득을 가르치는 데 쓰는 예산이다."
+    },
+    "exp1(8192 focal)": {
+      "n_contradict": 3388,
+      "grad_share_on_contradict": 0.0323,
+      "n_diverge": 716,
+      "grad_share_on_diverge": 0.0116,
+      "note": "diverge = 앙상블과 종점 모델의 tau=0.5 결정이 갈리는 원소. 앙상블 이득은 전부 이 밴드에서 나오므로, 여기에 실리는 기울기 몫이 KD가 이득을 가르치는 데 쓰는 예산이다."
+    }
+  },
+  "temperature": {
+    "T=1.0": {
+      "mid_per_doc": 2.009,
+      "l1_to_hard": 0.00829,
+      "11_01(512 focal)_distill_share": 0.932,
+      "11_01(512 focal)_cos_q_vs_y": 0.35373,
+      "exp1(8192 focal)_distill_share": 0.9351,
+      "exp1(8192 focal)_cos_q_vs_y": 0.25771
+    },
+    "T=1.5": {
+      "mid_per_doc": 20.373,
+      "l1_to_hard": 0.03192,
+      "11_01(512 focal)_distill_share": 0.9855,
+      "11_01(512 focal)_cos_q_vs_y": 0.15353,
+      "exp1(8192 focal)_distill_share": 0.9864,
+      "exp1(8192 focal)_cos_q_vs_y": 0.1126
+    },
+    "T=2.0": {
+      "mid_per_doc": 132.165,
+      "l1_to_hard": 0.06802,
+      "11_01(512 focal)_distill_share": 0.9935,
+      "11_01(512 focal)_cos_q_vs_y": 0.05532,
+      "exp1(8192 focal)_distill_share": 0.9938,
+      "exp1(8192 focal)_cos_q_vs_y": 0.05537
+    },
+    "T=3.0": {
+      "mid_per_doc": 187.927,
+      "l1_to_hard": 0.14462,
+      "11_01(512 focal)_distill_share": 0.997,
+      "11_01(512 focal)_cos_q_vs_y": 0.00373,
+      "exp1(8192 focal)_distill_share": 0.9971,
+      "exp1(8192 focal)_cos_q_vs_y": 0.02119
+    },
+    "T=5.0": {
+      "mid_per_doc": 188.0,
+      "l1_to_hard": 0.25372,
+      "11_01(512 focal)_distill_share": 0.9983,
+      "11_01(512 focal)_cos_q_vs_y": -0.01531,
+      "exp1(8192 focal)_distill_share": 0.9984,
+      "exp1(8192 focal)_cos_q_vs_y": 0.00616
+    }
+  },
+  "designed_lambda": {
+    "11_01(512 focal)": {
+      "share=0.2": 0.0179,
+      "share=0.3": 0.0303,
+      "share=0.5": 0.068
+    },
+    "exp1(8192 focal)": {
+      "share=0.2": 0.017,
+      "share=0.3": 0.0289,
+      "share=0.5": 0.0649
+    }
+  },
+  "caveat": "q는 test에서 만든 값이라 상한이다 — train 위 q는 teacher가 암기한 만큼 더 포화되므로 축퇴도는 여기서 잰 것보다 심해진다. student 종점은 아직 없어 수렴한 focal 런의 종점 로짓을 대역으로 썼다."
+}
