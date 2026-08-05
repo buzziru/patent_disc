@@ -54,7 +54,9 @@ uv 프로젝트이며 Python 3.12로 고정돼 있다(`uv.lock`이 버전의 SSO
 uv sync
 ```
 
-훈련은 GPU 잡(Colab · Lightning · RunPod)으로 돌린다 — 절차는 [docs/](docs/README.md)의 인프라 문서에 있다.
+로컬 머신은 Windows CPU 전용이라 훈련은 외부 GPU에서 돌린다. **주 경로는 RunPod 팟**이다 — 로컬 `uv.lock`을 굳힌 커스텀 Docker 이미지로 팟 템플릿을 만들고, 볼륨에 훈련 패키지와 HF 캐시를 두고 노트북을 실행한다. 코드가 확정되기 전의 짧은 실험은 Colab이 맡았다. 절차는 [docs/](docs/README.md)의 인프라 문서에 있다.
+
+로짓·지표 분석은 GPU 없이 로컬에서 돌아간다.
 
 ## 데이터
 

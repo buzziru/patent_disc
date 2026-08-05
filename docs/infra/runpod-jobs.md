@@ -1,7 +1,13 @@
 # RunPod — 커스텀 Docker 이미지로 GPU 훈련
 
-> `uv.lock`을 이미지에 굳혀(`uv sync --frozen`) 로컬·Colab·Lightning과 **비트 단위 동일 환경**을 재현하고, RTX 4090/L4급 팟에서 `.ipynb`를 돌리는 경로.
-> 대안 경로 = [Colab Job](./colab-jobs.md)(기본) · [Lightning Job](./lightning-jobs.md).
+> **이 프로젝트의 훈련 경로다.** 로컬 `uv.lock`을 이미지에 굳혀(`uv sync --frozen`) 로컬과 **비트 단위 동일 환경**을 재현하고, 그 이미지로 만든 팟 템플릿에서 `.ipynb`를 돌린다.
+> 훈련 코드가 확정되기 전의 초기 실험은 [Colab](./colab-jobs.md)이 맡았고, `src/patent_train` 패키지화 이후의 장시간 런이 전부 여기서 돌았다.
+
+## 실제 운영 형태
+
+- **이미지는 로컬에서 빌드한다** — 로컬 `.venv`의 SSOT인 `uv.lock`을 `uv sync --frozen`으로 그대로 재현해 Docker Hub에 push한다. 태그는 시맨틱 버전(`patent-disc:0.2.0` 계열)으로 고정한다.
+- **그 이미지로 팟 템플릿을 만들어 재사용한다.** 템플릿에 이미지·컨테이너 디스크·볼륨 마운트·환경 변수를 묶어 두면 팟을 새로 띄울 때마다 같은 설정이 선다. 팟 타입은 NVIDIA GPU 팟이다.
+- **볼륨 디스크(`/workspace`)가 세션 사이를 잇는다** — 훈련 패키지 `src/`와 HF 캐시(`HF_HOME=/workspace/hf_cache`)를 여기 두어, 팟을 Stop해도 코드 반입과 데이터·모델 재다운로드를 반복하지 않는다.
 
 ## 언제 RunPod을 쓰나
 

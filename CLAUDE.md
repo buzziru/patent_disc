@@ -13,9 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **작업 전** `PROJECT.md`**를 읽는다.** 목표·접근·모델·평가 프로토콜의 SSOT다(`owner/`는 참고 자료일 뿐 SSOT 아님).
 - **다중 레이블**: 학습 타깃은 문서별 `Mno` 다중-핫(188-class, sigmoid + Focal Loss γ=2). 대분류 `Lno`는 **예측된 각** `Mno`→`Lno` 매핑으로 유도한다.
 - **재사용할 지식·결과는 대화가 아니라** `docs/`**에 문서로 남긴다.** 특히 **인프라를 운영하며 알게 된 사실(오류·해결·플래그·머신 동작 등)은 해당** `docs/*.md`**를 즉시 최신화**한다.
-- **이 세션은 로컬 Windows 머신 — GPU 없음(CPU 전용).** 훈련은 외부 잡(Colab / Lightning Job/RunPod)으로 돌린다. Lightning은 로컬에서 **Python SDK로 커스텀 Docker 이미지 잡을 제출**한다(`lightning` CLI는 Windows 미지원 — `docs/infra/lightning-jobs.md`).
+- **이 세션은 로컬 Windows 머신 — GPU 없음(CPU 전용).** 훈련은 외부 GPU에서 돌린다. **주 경로는 RunPod 팟**이다 — 로컬 `uv.lock`을 굳힌 커스텀 이미지로 팟 템플릿을 만들고, 볼륨 `/workspace`에 `src/`와 HF 캐시를 둔다(`docs/infra/runpod-jobs.md`). 코드 확정 전의 짧은 실험은 Colab이 맡았다(`docs/infra/colab-jobs.md`). **Lightning은 이 프로젝트의 훈련에 쓰이지 않았다.**
 - **환경은 uv 프로젝트** `.venv`**(Python 3.12).** 패키지 설치는 `uv add`(시스템 pip/conda 금지), 실행은 `uv run …` 또는 `.venv\Scripts\python.exe`(Windows venv 레이아웃). 모델·토크나이저·데이터 코드는 이 `.venv`에서 돌린다. **Jupyter/ipynb 커널도** `.venv` **인터프리터를 선택**한다(`.venv\Scripts\python.exe`). Colab·도커 이미지 호환 위해 3.12 고정 — `uv.lock`이 버전의 SSOT.
-- `data/`는 압축 상태로 `zipfile` 스트리밍(419MB, gitignored) — **대량 unzip 금지**. 전처리 1회로 토크나이즈해 HF Hub에 올리고 Colab·Lightning 모두 streaming 소비(`docs/data/data-pipeline.md`). 코드베이스는 신규 시작 — 파이프라인을 새로 작성한다.
+- `data/`는 압축 상태로 `zipfile` 스트리밍(419MB, gitignored) — **대량 unzip 금지**. 전처리 1회로 토크나이즈해 HF Hub에 올리고 원격 GPU에서 streaming 소비한다(`docs/data/data-pipeline.md`). **가공 데이터셋은 공개 배포하지 않는다** — 재생성 절차는 같은 문서의 「재현 경로」에 있다.
 - **개발·훈련은** `.ipynb` **중심.** Colab에서 `colab exec -f nb.ipynb`로 그대로 실행하니 `.py`로 옮길 필요 없다(상세 `docs/infra/colab-jobs.md`).
 
 
@@ -53,6 +53,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | 데이터 레이아웃·스키마·전처리 파이프라인                     | `docs/data/`                          |
 | 실험 계획·프로토콜·실측(baseline 재현·ModernBERT·손실 함수·대조군·무훈련 분석) | `docs/experiments/`                   |
 | 결정 기록·회고(사안별 ADR)                         | `docs/adr/README.md`                  |
-| GPU 훈련을 외부 잡으로(Colab·Lightning·RunPod)     | `docs/infra/`                         |
+| GPU 훈련을 외부에서(RunPod 주 경로 · Colab 초기 실험)     | `docs/infra/`                         |
 
 

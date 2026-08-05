@@ -1,7 +1,9 @@
 # Lightning AI Jobs — 로컬에서 커스텀 Docker 이미지로 GPU 훈련
 
+> ⚠️ **이 프로젝트의 훈련에는 쓰이지 않았다.** SDK 인증·잡 제출 API까지 검증했으나 실제 훈련은 [Colab](./colab-jobs.md)(코드 확정 전)과 [RunPod](./runpod-jobs.md)(패키지화 이후)에서 돌았다. 이 문서는 그 검증 기록이며, Windows에서 Lightning을 쓰려는 경우의 참고 자료다.
+>
 > 작업은 **로컬 Windows 머신(CPU 전용)** 에서 하고, GPU 훈련은 **로컬에서 Lightning Python SDK로 비동기 Job을 제출**해 돌린다.
-> 환경 재현은 **`.venv`를 담은 커스텀 Docker 이미지**로 통일한다(스튜디오 스냅샷 대신). 대안 경로 = [Colab](./colab-jobs.md).
+> 환경 재현은 **`.venv`를 담은 커스텀 Docker 이미지**로 통일한다(스튜디오 스냅샷 대신).
 >
 > 스튜디오 인터랙티브 세션 진단은 [studio-performance.md](./studio-performance.md)(과거 기록).
 

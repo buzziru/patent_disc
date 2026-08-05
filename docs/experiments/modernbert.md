@@ -22,7 +22,7 @@
 - **타깃**: 문서별 188 다중-핫(`labels`), sigmoid + BCE 계열 손실(baseline 정합을 위해 focal 옵션 포함 검토).
 - **고정 test 원칙**: KoBERT와 **같은 test split, 같은 `kobert_len` 길이 bin** 위에서 평가한다(`../data/data.md` 「길이 bin」). 비교 축을 흔들지 않기 위해 bin은 A.X 토큰이 아니라 KoBERT 토큰으로 고정한다.
 - **평가**: `notebook/03_02_Metric.ipynb`(다중 라벨 micro/macro/sample-F1 + 길이 bin + top-1 weighted + LRAP/R-Precision). `tag`를 `axencoder_len{max_len}` 등으로 실험마다 유일하게 잡아 로짓 캐시 오염을 막는다.
-- **인프라**: Colab L4 기본(장문은 메모리를 많이 써 24GB가 안전하다, `../infra/colab-jobs.md`). 필요하면 Lightning Job.
+- **인프라**: 이 축의 초기 실험은 Colab L4에서 돌았다(장문은 메모리를 많이 써 24GB가 안전하다, `../infra/colab-jobs.md`). 훈련 코드를 패키지로 굳힌 뒤의 장시간 런은 RunPod 팟이 맡는다(`../infra/runpod-jobs.md`).
 
 ## 훈련·평가를 망가뜨리는 함정 네 가지
 

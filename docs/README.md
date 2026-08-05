@@ -51,14 +51,16 @@
 
 ### 인프라 (`infra/`)
 
-로컬 머신은 **Windows CPU 전용**이라 GPU 훈련을 외부 잡으로 돌린다. 그 운영 기록이다.
+로컬 머신은 **Windows CPU 전용**이라 GPU 훈련을 외부에서 돌린다. 그 운영 기록이다.
 
-| 문서 | 내용 |
-| --- | --- |
-| [colab-jobs.md](./infra/colab-jobs.md) | Google Colab — `colab` CLI로 헤드리스 L4 실행 |
-| [lightning-jobs.md](./infra/lightning-jobs.md) | Lightning AI — Python SDK로 커스텀 Docker 이미지 잡 제출 |
-| [runpod-jobs.md](./infra/runpod-jobs.md) | RunPod — 커스텀 이미지로 RTX 4090/L4 팟 훈련 |
-| [studio-performance.md](./infra/studio-performance.md) | 과거 Lightning cloudspace 진단 기록(현재 작업과 무관) |
+**훈련은 두 단계를 거쳤다** — 코드가 확정되기 전의 초기 실험·디버깅은 **Colab**에서, 훈련 코드를 `src/patent_train` 패키지로 굳힌 뒤의 장시간 런은 전부 **RunPod 팟**에서 돌았다. 전환 이유는 Colab 헤드리스 세션이 ~20분에 회수돼 무인 장시간 훈련이 되지 않기 때문이다.
+
+| 문서 | 내용 | 사용 |
+| --- | --- | --- |
+| [runpod-jobs.md](./infra/runpod-jobs.md) | RunPod — 로컬에서 빌드한 이미지로 팟 템플릿을 만들고 볼륨에 코드·캐시를 두고 훈련 | **주 경로** |
+| [colab-jobs.md](./infra/colab-jobs.md) | Google Colab — `colab` CLI로 헤드리스 L4 실행 | 초기 실험·디버깅 |
+| [lightning-jobs.md](./infra/lightning-jobs.md) | Lightning AI — Python SDK로 커스텀 Docker 이미지 잡 제출 | 미사용(검증 기록) |
+| [studio-performance.md](./infra/studio-performance.md) | 과거 Lightning cloudspace 진단 기록 | 미사용(참고) |
 
 ## 분석 스크립트 (`scripts/`)
 
@@ -84,12 +86,11 @@
 
 | 경로 | 언제 쓰나 |
 | --- | --- |
-| **Colab L4 (24GB)** | 기본 경로. 장문 모델은 512 토큰 대비 메모리를 많이 써 24GB가 안전하다. `colab exec -f nb.ipynb`로 실행 |
-| **Lightning Job** | 로컬에서 SDK로 커스텀 Docker 이미지 잡을 제출한다. L4보다 큰 머신·긴 런타임·스팟이 필요할 때. 실행 시간만 과금 |
-| **RunPod** | `uv.lock`을 굳힌 이미지로 RTX 4090/L4 팟에서 노트북 훈련 |
-| **로컬 Windows(CPU)** | 데이터 전처리·통계·잡 제어 등 GPU가 필요 없는 작업. GPU 훈련은 불가 |
+| **RunPod 팟** | 훈련의 주 경로. 로컬 `uv.lock`을 굳힌 이미지로 템플릿을 만들고, 볼륨(`/workspace`)에 `src/`와 HF 캐시를 두고 노트북을 돌린다. SSH가 끊겨도 컨테이너가 살아 무인 장시간 런이 된다 |
+| **Colab L4 (24GB)** | 코드가 확정되기 전의 짧은 실험·디버깅. `colab exec -f nb.ipynb` 한 줄로 왕복이 가장 짧다 |
+| **로컬 Windows(CPU)** | 데이터 전처리·통계·오류 분석·잡 제어 등 GPU가 필요 없는 작업. GPU 훈련은 불가 |
 
-> ⚠️ **idle GPU는 계속 과금된다.** Colab은 끝나면 반드시 `colab stop`(또는 self-clean되는 `colab run`)을 부른다. Lightning Job은 종료 시 머신이 자동 회수된다.
+> ⚠️ **idle GPU는 계속 과금된다.** Colab은 끝나면 반드시 `colab stop`(또는 self-clean되는 `colab run`)을 부른다. RunPod은 Stop해도 **볼륨 요금이 계속 청구**되므로 며칠 이상 쉴 때는 Terminate가 대개 이득이다([runpod-jobs.md](./infra/runpod-jobs.md)「비용」).
 
 ## 공개 산출물 (Hugging Face)
 
@@ -109,13 +110,12 @@
 | 항목 | 값 |
 | --- | --- |
 | 로컬 머신 | Windows 11, GPU 없음(CPU 전용). uv 프로젝트 `.venv`(Python 3.12), 인터프리터 `.venv\Scripts\python.exe` |
-| 로컬 도구 | `uv` 설치. Docker 미설치(이미지 빌드 시 필요). `lightning` CLI는 Windows 미지원이라 Lightning은 SDK로 쓴다 |
-| org | `paraise-org` |
-| teamspace | `ml` (owner: `paraise-org`) |
-| 로컬 인증 계정 | `paraise-edu` — teamspace `ml`의 멤버(owner 아님) |
-| 인증 env | `LIGHTNING_USER_ID`·`LIGHTNING_API_KEY`(잡 제출), `HUGGINGFACEHUB_API_TOKEN`(데이터). `.env`에 저장 |
+| 로컬 도구 | `uv` · Docker(훈련 이미지를 로컬에서 빌드해 Docker Hub로 push) · `colab` CLI · `runpodctl` |
+| 훈련 이미지 | 로컬 `uv.lock`을 `uv sync --frozen`으로 굳힌 커스텀 이미지. 시맨틱 버전 태그로 고정하고 RunPod 팟 템플릿이 이를 참조한다 |
+| 팟 볼륨 | `/workspace` — 훈련 패키지 `src/`와 HF 캐시(`HF_HOME=/workspace/hf_cache`)를 둔다 |
+| 인증 env | `HUGGINGFACEHUB_API_TOKEN`(데이터·모델), `WANDB_API_KEY`(관측), `RUNPOD_API_KEY`(팟 제어). `.env`에 저장하고 팟에는 환경 변수로 주입한다 |
 
-로그인 계정이 owner가 아니므로 로컬에서 잡을 제출할 때는 owner를 명시해야 한다(`Teamspace(name="ml", org="paraise-org")`). 상세는 [infra/lightning-jobs.md](./infra/lightning-jobs.md)의 트러블슈팅 절에 있다.
+Lightning 계정 값(org `paraise-org` · teamspace `ml` · 인증 계정 `paraise-edu`)은 [infra/lightning-jobs.md](./infra/lightning-jobs.md)가 소유한다 — 이 프로젝트의 훈련에는 쓰이지 않았다.
 
 ## 문서를 쌓는 규칙
 

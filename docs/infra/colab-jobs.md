@@ -1,12 +1,14 @@
 # Google Colab — 헤드리스 GPU 훈련 (`colab` CLI)
 
 > **L4 24GB** GPU에서 훈련을 돌리는 경로. 노트북 UI 업로드가 아니라 **`colab` CLI**로 원격 VM에서 로컬 `.ipynb`/`.py`를 실행한다(`colab exec -f`는 둘 다 지원) = 에이전트로 자동화 가능. 이 프로젝트는 **`.ipynb` 중심**.
-> 대안 경로 = [Lightning Job](./lightning-jobs.md).
+> **이 프로젝트에서 맡은 구간**: 훈련 코드가 확정되기 전의 초기 실험·디버깅. 코드를 `src/patent_train` 패키지로 굳힌 뒤로는 장시간 런을 [RunPod](./runpod-jobs.md)으로 옮겼다(아래 「세션 회수」가 그 이유다).
 
 ## 언제 Colab을 쓰나
 
-- 단일 GPU로 충분한 인코더 훈련의 **기본 경로**. 장문 인코더(`skt/A.X-Encoder-base`, ModernBERT 계열, 최대 16,384 토큰)는 512 토큰 대비 메모리를 많이 써 L4 24GB가 안전.
-- accelerator는 계정 등급에 따라 제한된다 — L4 쿼터가 없으면 `--gpu T4`(16GB)로 내리거나 Lightning L4 Job으로 우회한다.
+- **코드가 아직 흔들릴 때.** 반입·실행이 `colab exec -f nb.ipynb` 한 줄이라 왕복이 가장 짧다. 이미지 재빌드 루프가 없다.
+- 단일 GPU로 충분한 인코더 훈련. 장문 인코더(`skt/A.X-Encoder-base`, ModernBERT 계열, 최대 16,384 토큰)는 512 토큰 대비 메모리를 많이 써 L4 24GB가 안전.
+- accelerator는 계정 등급에 따라 제한된다 — L4 쿼터가 없으면 `--gpu T4`(16GB)로 내린다.
+- **12시간에 가까운 무인 런에는 맞지 않는다** — 세션 회수 때문이다. 그 구간은 RunPod이 맡는다.
 
 ## 설치·인증 (1회)
 
@@ -87,7 +89,8 @@ Colab VM은 휘발성 — 로컬 keep-alive가 끊겨 VM이 회수되면 `/conte
 
 KoBERT 9.6h 런을 헤드리스 `colab exec`로 **2회** 시도 → 둘 다 **~20분(23분·19분)에 `session_terminated`**. 로그는 매번 `session_created → KEEP started → session_terminated`뿐, **`keep_alive_stopped` 이벤트 없음** = keep-alive 데몬은 죽지 않았고 **Colab이 L4 VM을 서버측에서 회수**한 것(데몬의 다음 ping은 404 → exec "Connection was lost"). 즉 **TFE keep-alive ping이 GPU 회수를 막지 못한다**(idle 타이머는 갱신해도 Colab의 GPU 리스/프리엠션은 별개).
 - **결론**: 헤드리스 CLI로 **L4 장시간(수 시간) 무인 훈련은 비현실적**. epoch 저장이면 회수 시 매번 전량 유실.
-- **대안**: (a) 활성 브라우저 탭(`colab url`)을 열어두면 프런트엔드 heartbeat로 회수를 늦출 수 있음(**미검증**), (b) `save_steps`(<15분) + 잦은 Hub 체크포인트로 resume 반복(회수 ~20분마다 → 오버헤드 큼), (c) **장시간 런은 [Lightning Job](./lightning-jobs.md) 등 무인 훈련 전용 플랫폼**으로 전환. 짧은 검증·소규모 잡엔 Colab CLI가 여전히 유효.
+- **대안**: (a) 활성 브라우저 탭(`colab url`)을 열어두면 프런트엔드 heartbeat로 회수를 늦출 수 있음(**미검증**), (b) `save_steps`(<15분) + 잦은 Hub 체크포인트로 resume 반복(회수 ~20분마다 → 오버헤드 큼), (c) **장시간 런은 컨테이너가 유지되는 플랫폼으로 전환**. 짧은 검증·소규모 잡엔 Colab CLI가 여전히 유효.
+- **이 프로젝트의 선택은 (c)였다** — 훈련 코드를 패키지로 굳힌 뒤 장시간 런을 [RunPod](./runpod-jobs.md) 팟으로 옮겼다. 팟은 SSH가 끊겨도 컨테이너가 살아 있어 `tmux` 무인 훈련이 된다.
 
 ## 관측(observability) — headless 런에서 진행 보기
 

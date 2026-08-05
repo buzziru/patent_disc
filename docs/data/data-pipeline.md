@@ -7,7 +7,7 @@
 
 이렇게 하면 원본 zip을 디스크에 풀지 않아도 되고, Colab에 데이터를 업로드할 필요가 없으며, 두 플랫폼의 데이터 로딩 코드가 하나로 통일된다.
 
-기호·용어는 [GLOSSARY.md](../GLOSSARY.md), 데이터 원본 구조는 [data.md](./data.md), 실행 인프라는 [colab-jobs.md](../infra/colab-jobs.md)·[lightning-jobs.md](../infra/lightning-jobs.md)를 참조한다.
+기호·용어는 [GLOSSARY.md](../GLOSSARY.md), 데이터 원본 구조는 [data.md](./data.md), 실행 인프라는 [runpod-jobs.md](../infra/runpod-jobs.md)(주 경로)·[colab-jobs.md](../infra/colab-jobs.md)를 참조한다.
 
 ## 가공 데이터셋은 배포하지 않는다 — 재현 경로
 
@@ -41,7 +41,7 @@ AI Hub 원본은 재배포가 제한되므로 **Layer 1·Layer 2 산출물(정�
 
 - 데이터는 **특허 1건이 작은 JSON 1개**이고 zip당 수천 개가 들어 있다. 전량 `unzip`하면 파일이 수십만 개가 되어 파일시스템에 부담을 준다. 그래서 `zipfile`로 프로그램에서 스트리밍해 곧장 정제본을 만든다.
 - Colab VM은 원격·휘발성이라 로컬 `data/`를 볼 수 없다. VM 안에서 HF Hub를 받아오면 매 세션 업로드가 사라진다.
-- Lightning Job도 별도 GPU 머신의 컨테이너에서 돌아 로컬 `data/`를 볼 수 없다. 컨테이너 안에서 HF Hub를 받아오면 Colab과 로딩 코드가 그대로 같아진다.
+- RunPod 팟도 별도 GPU 머신의 컨테이너에서 돌아 로컬 `data/`를 볼 수 없다. 컨테이너 안에서 HF Hub를 받아오면 Colab과 로딩 코드가 그대로 같아진다.
 
 **토큰화본이 아니라 텍스트를 올리는 이유**는 실험 변수를 열어 두기 위해서다. 미리 토큰화하면 세 축이 한꺼번에 고정된다 — ① 토크나이저(A.X-Encoder / KLUE-RoBERTa / KoBERT 3종 비교), ② 입력 필드 조합, ③ `MAX_LEN`. 텍스트를 SSOT로 두고 토큰화를 Layer 2로 미루면 세 축을 자유롭게 바꿀 수 있다.
 
@@ -140,7 +140,7 @@ for name, part in splits.items():
 
 ---
 
-## Layer 2 — 소비: 실험마다 토큰화 (Colab·Lightning 동일 코드)
+## Layer 2 — 소비: 실험마다 토큰화 (Colab·RunPod 동일 코드)
 
 ```python
 from datasets import load_dataset
@@ -186,8 +186,8 @@ ds = ds.map(tokenize, remove_columns=[c for c in ds.column_names])
 
 ## 플랫폼별 데이터 반입 요약
 
-| | Colab | Lightning Job (Docker 이미지) |
+| | Colab | RunPod 팟 (Docker 이미지) |
 | --- | --- | --- |
 | 로컬 `data/` 접근 | 불가(원격·휘발 VM) | 불가(별도 GPU 머신의 컨테이너) |
-| 권장 반입 | **HF Hub pull(streaming)** | **HF Hub pull(streaming)** 또는 `path_mappings`로 data-connection |
-| 인증 | 노트북 `os.environ["HF_TOKEN"]` | SDK `env={"HF_TOKEN": …}` |
+| 권장 반입 | **HF Hub pull(streaming)** | **HF Hub pull(streaming)** — 캐시는 볼륨 `/workspace/hf_cache`에 남는다 |
+| 인증 | 노트북 `os.environ["HF_TOKEN"]` | 팟 환경 변수 `HF_TOKEN` |
