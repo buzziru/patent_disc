@@ -66,6 +66,15 @@
 
 전부 GPU 없이 돌아간다 — 저장된 로짓과 라벨만 읽는다. 각 스크립트는 `output/<같은 이름>.json`에 수치를 남기고, 그 해석은 위 실험 문서가 담는다. 새 런을 얹을 때는 대개 상단 `MODELS`/`TAGS` 사전 한 줄만 고치면 된다.
 
+**정답 축은 저장소에서 읽는다** — `src/gold_labels.py`의 `load_gold(split, OUT)`가 `output/gold_labels_{split}.json`(`document_id`·`label_ids`·`length_bin`)을 돌려주고, 라벨 공간은 `output/label_mappings.json`에서 온다. 그래서 14개 중 **12개가 네트워크 없이 재현된다**. 예외는 둘뿐이다.
+
+| 예외 | 필요한 것 |
+| --- | --- |
+| `length_cost.py` | 토큰화 데이터셋(토큰 길이 분포를 잰다) |
+| `ipc_field_analysis.py` | 원본 zip(`ipc_all` 필드를 직접 읽는다) |
+
+`confident_error_classes.py`의 `relabel_candidates.csv`는 `document_id`까지만 담는다 — 발명 명칭·IPC는 원문 필드라 동봉하지 않으며, 데이터셋을 재생성하면 그 열이 채워진다.
+
 | 스크립트 | 재사용 가능한 도구 |
 | --- | --- |
 | `hierarchy_loss_mass.py` | `paired_bootstrap`(문서 단위 신뢰구간) · `matched_operating_point`(예측량이 다른 두 런의 오류를 공정하게 비교하기 위한 작동점 정규화) |
@@ -103,7 +112,7 @@
 
 **실험 런 모델과 가공 데이터셋은 공개하지 않는다.** 따라서 아래 문서들이 적은 리포 ID(`A.X-patent-maxlen8192`·`-len512-*`·`-tapt-mlm`·`-seed153`·`patent-clean-text*` 등)는 조회되지 않으며, **당시 실행의 기록**으로 읽는다. 데이터셋을 AI Hub 원본에서 재생성하는 절차는 [data/data-pipeline.md](./data/data-pipeline.md)「가공 데이터셋은 배포하지 않는다 — 재현 경로」에 있다.
 
-로짓은 저장소에 동봉돼 있어(`output/logits_*.npy`) 이 모델들을 받지 않아도 `scripts/`의 분석은 전부 재현된다.
+**로짓과 정답 라벨이 저장소에 동봉돼 있다**(`output/logits_*.npy` · `output/gold_labels_*.json`) — 모델도 데이터셋도 받지 않고 `scripts/` 14개 중 12개가 네트워크 없이 돈다(예외는 [분석 스크립트](#분석-스크립트-scripts) 절).
 
 ## 환경 값
 

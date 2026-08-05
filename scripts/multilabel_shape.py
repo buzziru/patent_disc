@@ -36,8 +36,7 @@ ROOT = Path(os.environ["DATA_ROOT"])
 os.environ.setdefault("HF_HOME", str(ROOT / ".hf_cache"))
 sys.path.insert(0, str(ROOT / "src"))
 
-from datasets import load_dataset                      # noqa: E402
-from huggingface_hub import hf_hub_download            # noqa: E402
+from gold_labels import load_gold                    # noqa: E402  (저장소 동봉 정답 축 — 데이터셋 불필요)
 from error_analysis import LabelSpace, build_gold      # noqa: E402
 
 OUT = ROOT / "output"
@@ -122,7 +121,7 @@ def cooccurrence(recs, ls):
 
 def recall_split(ls):
     """test 양성 라벨을 형제 동반 / 단독-Lno로 갈라 recall을 잰다 + 유도 다중 Lno 게이트 상한."""
-    ds = load_dataset(RAW_DS, split="test")
+    ds = load_gold("test", OUT)
     n = len(ds)
     Y = build_gold(ds["label_ids"], n, NUM_LABELS)
     YL = ls.to_lno(Y)
@@ -174,11 +173,11 @@ def recall_split(ls):
 
 
 def main():
-    lm = json.load(open(hf_hub_download(RAW_DS, "label_mappings.json", repo_type="dataset"),
+    lm = json.load(open(OUT / "label_mappings.json",
                         encoding="utf-8"))
     ls = LabelSpace(lm["id2mno"], lm["mno2lno"], NUM_LABELS)
 
-    per_split = {s: [list(x) for x in load_dataset(RAW_DS, split=s)["label_ids"]] for s in SPLITS}
+    per_split = {s: [list(x) for x in load_gold(s, OUT)["label_ids"]] for s in SPLITS}
     per_split["ALL"] = [r for s in SPLITS for r in per_split[s]]
 
     shapes = {s: shape(recs, ls) for s, recs in per_split.items()}

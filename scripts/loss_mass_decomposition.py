@@ -41,7 +41,7 @@ ROOT = Path(os.environ["DATA_ROOT"])
 os.environ.setdefault("HF_HOME", str(ROOT / ".hf_cache"))
 sys.path.insert(0, str(ROOT / "src"))
 
-from datasets import load_dataset                      # noqa: E402  (HF_HOME 설정 뒤 import)
+from gold_labels import load_gold                    # noqa: E402  (저장소 동봉 정답 축 — 데이터셋 불필요)
 from sklearn.metrics import f1_score                   # noqa: E402
 from error_analysis import build_gold                  # noqa: E402
 
@@ -65,7 +65,7 @@ TAUS = [0.30, 0.40, 0.45, 0.50, 0.55, 0.60, 0.70]
 
 def clean_axis():
     """정리 test의 정답 다중핫과, 구 test 행 → 정리 test 행 사영 인덱스."""
-    ds = load_dataset(RAW_DS, split=SPLIT)
+    ds = load_gold(SPLIT, OUT)
     Y = build_gold(ds["label_ids"], len(ds), NUM_LABELS).astype(bool)
     clean_ids = list(ds["document_id"])
 

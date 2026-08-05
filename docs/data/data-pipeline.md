@@ -25,7 +25,14 @@ AI Hub 원본은 재배포가 제한되므로 **Layer 1·Layer 2 산출물(정�
 
 정리는 재토큰화 없이 `document_id` 필터로 끝나므로 3단계가 2단계 뒤에 온다.
 
-**라벨 매핑은 재생성하지 않아도 된다** — `output/label_mappings.json`이 저장소에 동봉돼 있다. 188개 `Mno`의 정렬 순서(= 모델 출력 열 순서)와 `Mno`→`Lno` 대응이 들어 있어, 배포 모델의 출력을 해석하는 데 필요한 전부다. 데이터셋 없이 모델만 쓰는 경우 0~4단계가 모두 불필요하다.
+**분석만 재현하려면 위 단계가 모두 불필요하다.** 두 가지가 저장소에 동봉돼 있다.
+
+| 파일 | 내용 | 쓰임 |
+| --- | --- | --- |
+| `output/label_mappings.json` | 188개 `Mno`의 정렬 순서(= 모델 출력 열 순서) · `Mno`→`Lno` 대응 | 모델 출력 해석 |
+| `output/gold_labels_{train,val,test}.json` | `document_id` · `label_ids` · `length_bin` | 평가 축(정답) |
+
+동봉하는 것은 **비텍스트 컬럼 셋뿐**이고 원문(`invention_title`·`abstract`·`claims`)은 담지 않는다 — 라벨 인덱스는 원문 재배포에 해당하지 않는다. `src/gold_labels.py`의 `load_gold(split, OUT)`가 이 파일을 읽어 데이터셋 객체와 같은 방식(`ds["label_ids"]`·`len(ds)`)으로 돌려주므로, 분석 스크립트는 데이터셋 없이 그대로 돈다. 위 0~4단계가 필요한 것은 **훈련을 다시 돌리거나 원문 텍스트가 필요할 때**뿐이다.
 
 ### 데이터셋 ID가 박혀 있는 곳
 

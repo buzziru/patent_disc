@@ -41,8 +41,7 @@ os.environ.setdefault("HF_HOME", str(ROOT / ".hf_cache"))
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from datasets import load_dataset                      # noqa: E402  (HF_HOME 설정 뒤 import)
-from huggingface_hub import hf_hub_download            # noqa: E402
+from gold_labels import load_gold                    # noqa: E402  (저장소 동봉 정답 축 — 데이터셋 불필요)
 from error_analysis import LabelSpace, build_gold      # noqa: E402
 
 OUT = ROOT / "output"
@@ -65,7 +64,7 @@ ANCHOR, ARM, SEED, BCE = "11_01(focal)", "14_01(MCL)", "11_04(seed153)", "BCE"
 
 # ── 축 · 로짓 ────────────────────────────────────────────────────────────────
 def load_axis():
-    ds = load_dataset(RAW_DS, split=SPLIT)
+    ds = load_gold(SPLIT, OUT)
     Y = build_gold(ds["label_ids"], len(ds), NUM_LABELS)
     clean_ids = list(ds["document_id"])
     stored = json.loads((OUT / f"doc_ids_clean_{SPLIT}.json").read_text(encoding="utf-8"))
@@ -317,7 +316,7 @@ def micro_cells(Zn, Y, pos_group):
 
 
 def main():
-    lm = json.load(open(hf_hub_download(RAW_DS, "label_mappings.json", repo_type="dataset"),
+    lm = json.load(open(OUT / "label_mappings.json",
                         encoding="utf-8"))
     ls = LabelSpace(lm["id2mno"], lm["mno2lno"], NUM_LABELS)
     lno = torch.as_tensor(np.asarray(ls.lno_idx), dtype=torch.long)

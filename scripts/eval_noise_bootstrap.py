@@ -33,7 +33,7 @@ load_dotenv()
 ROOT = Path(os.environ["DATA_ROOT"])
 os.environ.setdefault("HF_HOME", str(ROOT / ".hf_cache"))
 
-from datasets import load_dataset          # noqa: E402  (HF_HOME 설정 뒤 import)
+from gold_labels import load_gold                    # noqa: E402  (저장소 동봉 정답 축 — 데이터셋 불필요)
 from error_analysis import build_gold      # noqa: E402
 
 OUT = ROOT / "output"
@@ -70,7 +70,7 @@ PAIRS = [
 
 def clean_axis():
     """정리 test의 정답 다중핫 Y와, 구 test 행 → 정리 test 행 사영 인덱스."""
-    ds = load_dataset(RAW_DS, split=SPLIT)
+    ds = load_gold(SPLIT, OUT)
     Y = build_gold(ds["label_ids"], len(ds), NUM_LABELS)
     clean_ids = list(ds["document_id"])
 

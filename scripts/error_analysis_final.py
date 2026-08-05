@@ -39,8 +39,7 @@ ROOT = Path(os.environ["DATA_ROOT"])
 os.environ.setdefault("HF_HOME", str(ROOT / ".hf_cache"))
 sys.path.insert(0, str(ROOT / "src"))
 
-from datasets import load_dataset                          # noqa: E402  (HF_HOME 설정 뒤 import)
-from huggingface_hub import hf_hub_download                # noqa: E402
+from gold_labels import load_gold                    # noqa: E402  (저장소 동봉 정답 축 — 데이터셋 불필요)
 from error_analysis import ErrorAnalysis                   # noqa: E402
 from patent_train.metrics import empty_rate, f1_triple     # noqa: E402
 
@@ -109,11 +108,11 @@ def micro_by_bin(z, Y, length_bin, bins):
 def main():
     # ── 축 · 라벨 공간 ────────────────────────────────────────────────────
     label_mapping = json.load(open(
-        hf_hub_download(repo_id=RAW_DS, filename="label_mappings.json", repo_type="dataset"),
+        OUT / "label_mappings.json",
         encoding="utf-8"))
     EA = ErrorAnalysis(label_mapping, num_labels=NUM_LABELS, tau=TAU)
 
-    ds = load_dataset(RAW_DS, split=SPLIT)
+    ds = load_gold(SPLIT, OUT)
     EA.set_data(ds)
     Y, length_bin, k_gold, BINS, N = EA.Y, EA.length_bin, EA.k_gold, EA.bins, EA.n
 

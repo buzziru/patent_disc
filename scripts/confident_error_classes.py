@@ -44,8 +44,7 @@ ROOT = Path(os.environ["DATA_ROOT"])
 os.environ.setdefault("HF_HOME", str(ROOT / ".hf_cache"))
 sys.path.insert(0, str(ROOT / "src"))
 
-from datasets import load_dataset                      # noqa: E402
-from huggingface_hub import hf_hub_download            # noqa: E402
+from gold_labels import load_gold                      # noqa: E402  (저장소 동봉 정답 축)
 from error_analysis import LabelSpace, build_gold      # noqa: E402
 
 OUT = ROOT / "output"
@@ -67,7 +66,7 @@ TOP_N = 15
 
 
 def load_all():
-    ds = load_dataset(RAW_DS, split="test")
+    ds = load_gold("test", OUT)
     Y = build_gold(ds["label_ids"], len(ds), NUM_LABELS)
     clean_ids = list(ds["document_id"])
     assert json.loads((OUT / "doc_ids_clean_test.json").read_text(encoding="utf-8")) == clean_ids
@@ -85,7 +84,7 @@ def load_all():
 
 
 def train_lift():
-    ids_list = load_dataset(RAW_DS, split="train")["label_ids"]
+    ids_list = load_gold("train", OUT)["label_ids"]
     n = len(ids_list)
     cnt = np.zeros(NUM_LABELS)
     co = np.zeros((NUM_LABELS, NUM_LABELS))
@@ -115,8 +114,7 @@ def conflict_labels():
 
 
 def main():
-    lm = json.load(open(hf_hub_download(RAW_DS, "label_mappings.json", repo_type="dataset"),
-                        encoding="utf-8"))
+    lm = json.load(open(OUT / "label_mappings.json", encoding="utf-8"))
     ls = LabelSpace(lm["id2mno"], lm["mno2lno"], NUM_LABELS)
     mno = ls.mno_of_col
     ds, Y, P = load_all()
@@ -288,7 +286,7 @@ def main():
         g = max(gold_rows[i], key=lambda x: lift[x, c])
         cand.append({
             "type": "missing_label(누락 후보)", "document_id": ds["document_id"][int(i)],
-            "invention_title": ds["invention_title"][int(i)], "ipc_main": ds["ipc_main"][int(i)],
+            "invention_title": "", "ipc_main": "",   # 원문 필드는 동봉하지 않는다(데이터셋 재생성 시 채워진다)
             "gold_mno": " ".join(mno[x] for x in gold_rows[i]),
             "candidate_mno": mno[int(c)], "anchor_p": round(float(pa[i, c]), 3),
             # 합의의 최약 고리 — FP는 가장 낮은 확률(가장 소극적인 런)
@@ -300,7 +298,7 @@ def main():
         sib = [g for g in gold_rows[i] if g != c]
         cand.append({
             "type": "spurious_label(오부착 후보)", "document_id": ds["document_id"][int(i)],
-            "invention_title": ds["invention_title"][int(i)], "ipc_main": ds["ipc_main"][int(i)],
+            "invention_title": "", "ipc_main": "",   # 원문 필드는 동봉하지 않는다(데이터셋 재생성 시 채워진다)
             "gold_mno": " ".join(mno[x] for x in gold_rows[i]),
             "candidate_mno": mno[int(c)], "anchor_p": round(float(pa[i, c]), 3),
             # FN은 가장 높은 확률(가장 적극적인 런) — 어느 쪽이든 합의를 가장 약하게 지지하는 값

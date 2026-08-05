@@ -40,11 +40,13 @@ test 11,244건 · τ=0.5 · 같은 문서·같은 순서에서 측정.
 | `scripts/` | 오류 분석·진단 스크립트 |
 | `output/` | 지표·오류 분석 결과(json)와 **모델별 로짓 덤프(npy)** |
 
-**로짓을 저장소에 포함한다** — GPU 없이 임계값 스윕·오류 분석·모델 간 비교를 재현할 수 있다. 배포 모델의 전체 오류 분석은 아래 한 줄로 재현된다.
+**모델별 로짓과 정답 라벨을 저장소에 포함한다**(`output/logits_*.npy` · `output/gold_labels_*.json`). 그래서 **GPU도, 모델 가중치도, 데이터셋도 없이** 임계값 스윕·오류 분석·모델 간 비교가 그대로 돈다. 배포 모델의 전체 오류 분석은 아래 한 줄이다.
 
 ```bash
 uv run python scripts/error_analysis_final.py
 ```
+
+`scripts/` 14개 중 **12개가 네트워크 없이 재현된다**. 나머지 둘은 입력 길이 분포를 재는 `length_cost.py`(토큰화 데이터셋 필요)와 IPC 필드를 원본 zip에서 읽는 `ipc_field_analysis.py`다. 동봉하는 정답 라벨은 `document_id`·`label_ids`·길이 bin뿐이며 **원문 텍스트는 포함하지 않는다**.
 
 ## 환경
 
