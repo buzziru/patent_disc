@@ -96,6 +96,18 @@ exp2는 **512 창에서도 네 지표 모두 KoBERT를 넘는다** — 개선의
 - **손실 축 종결을 보강한다.** 동일 레시피(eff128/lr4.8e-4)에서 focal이 BCE·ZLPR·ASL을 모두 앞선다([loss-function.md](loss-function.md) 실측 표) — 손실 후보들의 열세가 레시피 교란 요인이 아님을 레시피 정합 focal로 확정한다([ADR-0009](../adr/0009-loss-axis-closure.md)).
 - **클리닝 성분은 이 런에서 분리되지 않는다.** 이 런과 exp2를 같은 정리 test에서 대조한 per-class paired diff-in-diff(충돌 연루 74클래스 대 비연루 114클래스)가 유의하지 않다(`11_02`, `output/error_analysis_cleandata_vs_exp2.json`) — 판정·수치는 [ADR-0010](../adr/0010-data-cleaning.md) 「결과·영향」.
 
+## 배포 런 실측 (`16_01`, max_len 4096)
+
+> 훈련: `notebook_output/16_01_Model_4096.ipynb`. 지표 SSOT: `output/modernbert-patent-len4096-op_metrics.json`. 데이터는 [ADR-0010](../adr/0010-data-cleaning.md) 클리닝본(test 11,244), 모델 `ingyoun/A.X-patent-len4096-op`.
+
+**구성**: `11_01`에서 `max_len`만 4096으로 바꾼 단일 변수 런이다 — `FocalLoss(0.25, 2)` · eff_batch 128 · lr 4.8e-4 · 12 epoch · seed 42 동일, `micro_batch=16`(grad_accum 8). 18,912 step 완주.
+
+**test**: micro **0.8660** · macro 0.8638 · sample 0.8835 · empty_rate 0.83% · top-1 weighted 0.8251 · P@1 0.9051.
+
+- 기준 런 `11_01` 대비 **+0.72pt**(paired bootstrap CI95 [+0.33, +1.10]), exp1(정리 재계산 0.8683)과는 **구분되지 않는다**(−0.23pt, CI95 [−0.60, +0.13]).
+- 이득이 길이 bin에서 단조 증가하고(≤512 +0.29 → 1024–2048 +1.58pt) exp1 대비 격차는 길이와 무관하게 흩어져, 4096의 길이 부채 추정 ≲0.03pt가 유지된다.
+- 헤드라인·오류 구조·한계 기술의 전체 실측은 [final-run.md](final-run.md)가 소유한다.
+
 ## 전 런 대조 — test micro-F1
 
 프로젝트가 낸 모든 full run을 한 표에 둔다. 축별 판정과 기제는 각 축 문서에 있으며 여기서는 서열만 본다.
@@ -112,6 +124,7 @@ exp2는 **512 창에서도 네 지표 모두 KoBERT를 넘는다** — 개선의
 | `13_02` (A.X TAPT) | 512 | focal | eff128/lr4.8e-4 | 0.8572 | 도메인 축 종결(기준 런 −0.15pt, 잡음 내) |
 | `11_04` (A.X seed153) | 512 | focal | eff128/lr4.8e-4 | 0.8570 | 시드 축 측정용 기준 런 재현(Δ −0.176pt) |
 | `14_01` (A.X MCLoss) | 512 | focal+MCL λ0.0444 | eff128/lr4.8e-4 | 0.8467 | 계층 손실 1런(기준 런 −1.20pt, **잡음 밖**) |
+| **`16_01` (A.X)** | **4096** | focal | eff128/lr4.8e-4 | **0.8660** | **배포 모델** — 기준 런 +0.72pt(잡음 밖) |
 
-- **exp1~BCE는 구 test(11,271) 기준이고 `11_01`·`13_02`·`11_04`·`14_01`만 정리 test(11,244)다.** 정리 test 재계산값은 exp1 0.8683 · exp2 0.8599 · KoBERT 0.8500이며 서열·격차는 불변이다(`output/headline_cleaned_test.json`). **서로 다른 test에서 잰 micro를 나란히 놓지 않는다.**
-- 배포 런(`16_01`, max_len 4096)의 결정과 근거는 [final-run.md](final-run.md)에 있다.
+- **exp1~BCE는 구 test(11,271) 기준이고 `11_01`·`13_02`·`11_04`·`14_01`·`16_01`만 정리 test(11,244)다.** 정리 test 재계산값은 exp1 0.8683 · exp2 0.8599 · KoBERT 0.8500이며 서열·격차는 불변이다(`output/headline_cleaned_test.json`). **서로 다른 test에서 잰 micro를 나란히 놓지 않는다** — `16_01`과 exp1의 0.8683 대조는 이 재계산값으로 한다.
+- 배포 런(`16_01`, max_len 4096)의 결정·근거·오류 구조는 [final-run.md](final-run.md)에 있다.

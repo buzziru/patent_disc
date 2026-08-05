@@ -37,6 +37,18 @@
 
 > 입력 최대 길이는 16,384까지 가능하나, 실제 시퀀스 길이는 필드 조합·메모리와의 트레이드오프로 실험한다(전 문서를 16k로 패딩할 필요 없음). **배포 런은 `max_len=4096`으로 확정**했다 — 8192 대비 유실 토큰이 1.60%p 늘 뿐인데(0.02% → 1.60%) 최악 시퀀스가 절반이라 `micro_batch`를 2배로 쓴다. 결정 경위는 [ADR-0017](docs/adr/0017-deployment-context-window.md), 근거·비용 표는 `docs/experiments/final-run.md`.
 
+## 산출물 모델 — `16_01` (A.X-Encoder, 4096)
+
+**`ingyoun/A.X-patent-len4096-op`** — 정리 데이터(train 201,616) 위에서 `11_01` 레시피(eff_batch 128 · lr 4.8e-4 · focal γ=2 · 12 epoch)로 `max_len`만 4096으로 올린 단일 변수 런이다.
+
+**정리 test(11,244) micro-F1 0.8660** · macro 0.8638 · sample 0.8835 · empty rate 0.83% · top-1 weighted 0.8251(벤더 연속성 병기, 공식 0.8249와 다른 test라 대면시키지 않는다).
+
+- 기준 런 `11_01`(0.8588) 대비 **+0.72pt** — paired bootstrap CI95 [+0.33, +1.10]으로 시드 잡음 밖이고, 이득이 길이 bin에서 단조 증가(≤512 +0.29 → 1024–2048 +1.58pt)해 창 확장의 서명과 일치한다. 창 상한 exp1(정리 재계산 0.8683)과는 구분되지 않는다(−0.23pt, CI95 [−0.60, +0.13]).
+- KoBERT 재현선(정리 test 0.8500) 대비 **+1.60pt**(CI95 [+1.19, +2.00]).
+- 오류 구조는 기준 런과 동형이다 — 앵커 오류 1,067건 중 cross-`Lno`가 63.5%이고 2단계(`Lno`→`Mno`) 추정 P@1이 flat보다 −0.72pt라 **flat 유지** 판정이 배포 모델에서 재확인된다. 남은 최대 헤드룸은 k≥2 카디널리티(오라클 상한 +1.73pt)이며 그 회수 경로는 「닫힌 갈래」다.
+- 실측·오류 분석 전체는 `docs/experiments/final-run.md`, 재현은 `scripts/error_analysis_final.py`.
+- **성능 보고에는 아래 「스코프·한계」의 라벨 잡음 편향과 평탄화 분포를 병기한다.**
+
 ## 평가 프로토콜 (baseline 주의)
 
 **0.8249의 정체(참고 코드 `소스코드/03_model_test.ipynb` 실측):** baseline(KoBERT)은 **훈련은 멀티레이블**(FocalLoss=BCE 기반)이나 **평가는 top-1**(`argmax` 1개) 예측을 단일화한 정답과 sklearn `f1_score`로 잰다. 결과 **Micro 0.8261 / Macro 0.8038 / weighted 0.8249** — 즉 **`0.8249` = full test(24,525건)의 weighted-F1(top-1)**이다.

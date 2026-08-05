@@ -2,7 +2,7 @@
 
 특허 문헌을 과학기술표준분류 **17개 대분류 / 188개 중분류**로 자동 분류하는 인코더 모델을 만들고, 공식 baseline 대비 개선을 정량 입증하는 프로젝트다. 한 특허가 여러 중분류에 해당할 수 있어(고유 문서의 14.1%) 문제는 다중 라벨 188-way 분류이며, 주 모델은 한국어 ModernBERT인 `skt/A.X-Encoder-base`(16k 컨텍스트)다.
 
-**현재 결과**: 자체 재현한 KoBERT baseline의 다중 라벨 micro-F1 **0.8502** → 장문 인코더(8192 토큰) **0.8685**(+1.83pt). 개선분은 컨텍스트 길이 +0.84pt와 모델·토크나이저 +0.99pt로 분해된다. 배포 모델은 비용 대비 손익 분기인 4096 토큰 창으로 확정했다.
+**현재 결과**: 자체 재현한 KoBERT baseline의 다중 라벨 micro-F1 **0.8502** → 장문 인코더(8192 토큰) **0.8685**(+1.83pt). 개선분은 컨텍스트 길이 +0.84pt와 모델·토크나이저 +0.99pt로 분해된다. **산출물 모델은 비용 대비 손익 분기인 4096 토큰 창으로 정리 데이터 위에서 훈련한 `16_01`이며, 정리 test micro-F1 0.8660**(KoBERT 재현선 대비 +1.60pt · 512 기준 런 대비 +0.72pt)이다 — [experiments/final-run.md](./experiments/final-run.md).
 
 이 폴더는 그 과정에서 나온 **데이터 분석·실험 실측·의사결정 기록**을 모은 곳이다. 전체 명세(목표·접근·평가 프로토콜)는 [PROJECT.md](../PROJECT.md)에 있다.
 
@@ -43,7 +43,7 @@
 | [eval-noise.md](./experiments/eval-noise.md) | 평가 표본 잡음과 훈련 시드 잡음 — 판정선의 근거 |
 | [training-curves.md](./experiments/training-curves.md) | 훈련 곡선 판독 — 손실 상승과 F1 개선의 공존 |
 | [confident-errors.md](./experiments/confident-errors.md) | 확신 오답의 정체 — 라벨 잡음 진단과 측정 편향 |
-| [final-run.md](./experiments/final-run.md) | 배포 모델 확정 런 — 창 크기·레시피 결정 |
+| [final-run.md](./experiments/final-run.md) | 배포 모델 확정 런 — 창 크기·레시피 결정과 최종 실측 |
 
 ### 결정 기록 (`adr/`)
 
@@ -74,6 +74,7 @@
 | `confident_error_classes.py` | 클래스 쌍 분해 · 시드 쌍둥이 대조 · 재라벨링 후보 목록(CSV) |
 | `loss_mass_decomposition.py` | 원소별 손실 질량 집중도 · 확률 포화도 · `τ` 스윕 |
 | `eval_noise_bootstrap.py` · `seed_variance.py` | 평가 표본 잡음 · 훈련 시드 잡음 |
+| `error_analysis_final.py` | 배포 모델 상세 오류 분석 — `error_analysis` 기법 전량 + 비교선 4런 paired 대조·길이 bin 델타 |
 | `length_cost.py` | 입력 길이 분포 · `max_len`별 유실 토큰·비용·배치 여유 |
 | `hierarchy_conditional.py` · `multilabel_shape.py` · `ipc_field_analysis.py` | 계층 조건부 추정량 · 다중 라벨 형상 · IPC 필드 신호 |
 
