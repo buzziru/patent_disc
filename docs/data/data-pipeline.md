@@ -9,6 +9,34 @@
 
 기호·용어는 [GLOSSARY.md](../GLOSSARY.md), 데이터 원본 구조는 [data.md](./data.md), 실행 인프라는 [colab-jobs.md](../infra/colab-jobs.md)·[lightning-jobs.md](../infra/lightning-jobs.md)를 참조한다.
 
+## 가공 데이터셋은 배포하지 않는다 — 재현 경로
+
+AI Hub 원본은 재배포가 제한되므로 **Layer 1·Layer 2 산출물(정제 텍스트·토큰화본)을 공개 저장소에 두지 않는다.** 남기는 것은 원본 출처뿐이다 — AI Hub 71531 「과학기술표준분류 대응 특허 데이터」(<https://www.aihub.or.kr>).
+
+따라서 **코드에 적힌 데이터셋 ID는 그대로 조회되지 않는다.** 노트북·스크립트를 실행하려면 아래 순서로 데이터셋을 다시 만들고 ID를 자신의 계정으로 바꾼다.
+
+| 단계 | 실행 | 산출 |
+| --- | --- | --- |
+| 0 | AI Hub에서 원본을 받아 `.env`의 `DATA_ROOT` 아래 `data/`에 **zip 상태로** 둔다 | 원본 zip([data.md](./data.md)「레이아웃」) |
+| 1 | `notebook/01_Data.ipynb` — Layer 1 | 정제 텍스트 · `label_mappings.json` |
+| 2 | `notebook/04_01_Prep_ModernBERT.ipynb` — Layer 2 (KoBERT는 `02_01`, KLUE-RoBERTa는 `07_01`) | 토큰화본 |
+| 3 | `notebook/10_03_Label_Conflict_Clean.ipynb` — 336문서 정리([ADR-0010](../adr/0010-data-cleaning.md)) | 정리본(원본·토큰화본을 같은 `document_id`로 필터) |
+| 4 | 코드의 데이터셋 ID를 자신의 계정으로 바꾼다 | — |
+
+정리는 재토큰화 없이 `document_id` 필터로 끝나므로 3단계가 2단계 뒤에 온다.
+
+**라벨 매핑은 재생성하지 않아도 된다** — `output/label_mappings.json`이 저장소에 동봉돼 있다. 188개 `Mno`의 정렬 순서(= 모델 출력 열 순서)와 `Mno`→`Lno` 대응이 들어 있어, 배포 모델의 출력을 해석하는 데 필요한 전부다. 데이터셋 없이 모델만 쓰는 경우 0~4단계가 모두 불필요하다.
+
+### 데이터셋 ID가 박혀 있는 곳
+
+| 위치 | 개수 | 표기 |
+| --- | ---: | --- |
+| `notebook/*.ipynb` | 15 | 첫 머리에 안내 셀 |
+| `scripts/*.py` | 13 | 모듈 docstring 끝줄 |
+| `src/patent_train/{data,backbones}.py` | 2 | docstring |
+
+`notebook_output/`은 **실행 기록**이라 표기하지 않는다 — 당시 실행 환경을 그대로 보존한다. `output/*.json`에 남은 ID도 산출 시점의 출처 기록이다.
+
 ## 왜 이 구조인가
 
 - 데이터는 **특허 1건이 작은 JSON 1개**이고 zip당 수천 개가 들어 있다. 전량 `unzip`하면 파일이 수십만 개가 되어 파일시스템에 부담을 준다. 그래서 `zipfile`로 프로그램에서 스트리밍해 곧장 정제본을 만든다.

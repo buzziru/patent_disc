@@ -23,6 +23,9 @@ exp1 8192). `q`는 test에서 만든 값이라 상한이다 — train 위 `q`는
 
 실행: `uv run python scripts/kd_grad_budget.py`
 산출: `output/kd_grad_budget.json`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import json

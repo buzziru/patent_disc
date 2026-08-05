@@ -6,6 +6,7 @@ vendor/
 /.vscode/
 owner/
 pyrightconfig.json
+.claude/rules/
 
 # 로컬 실행 산출물(노트북·훈련) — 실수 커밋 방지
 __pycache__/
@@ -13,5 +14,7 @@ __pycache__/
 .ipynb_checkpoints/
 wandb/
 
-# 로짓 덤프 — 재생성 가능한 데이터(notebook/06_00). output/은 metrics json만 추적한다
-output/*.npy
+# hidden state 덤프 — 풀링 프로브(notebook/12_01)의 중간 산출물 131MB.
+# 결론은 output/hidden_pooling_probe_test.json에 있어 원본 배열은 추적하지 않는다.
+# 로짓(output/logits_*.npy 160MB)은 추적한다 — GPU 없이 임계값·오류 분석을 재현하는 근거다.
+output/hidden_*.npy

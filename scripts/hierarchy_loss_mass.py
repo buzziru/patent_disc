@@ -21,6 +21,9 @@ MCLoss를 `y_L = max_{m in L} h_m`(별도 `Lno` 출력 없음)로 축약하면 �
 
 실행: `uv run python scripts/hierarchy_loss_mass.py`
 산출: `output/hierarchy_loss_mass.json`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import json

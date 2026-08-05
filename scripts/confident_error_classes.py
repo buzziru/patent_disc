@@ -22,6 +22,9 @@
 
 실행: `uv run python scripts/confident_error_classes.py`
 산출: `output/confident_error_classes.json` · `output/relabel_candidates.csv`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import csv

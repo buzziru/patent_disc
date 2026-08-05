@@ -7,6 +7,9 @@
 `attn_implementation`·`classifier_dropout`은 모델 구성 인자라 백본에 함께 둔다(로컬/CPU 디버그는 "eager").
 `bf16`도 같은 이유로 여기 있다 — flash-attention-2는 반정밀도 입력을 요구하므로 어텐션 구현과 한 몸이고,
 레시피(lr·배치처럼 실험이 고르는 축)가 아니라 백본이 결정하는 제약이다.
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 from dataclasses import dataclass
@@ -33,6 +36,7 @@ BACKBONES = {
         rev="9708f9c404ace91efd25c06fac2d73413616f4ef",
         dataset_id="ingyoun/patent-clean-text-modernbert-tokenized",
     ),
+    # TAPT 축은 종결됐고(ADR-0013) 그 사전학습 체크포인트는 공개하지 않는다 — 이 스펙은 실행 기록이다.
     "axenc_tapt": Backbone(
         key="axenc_tapt",
         model_name="ingyoun/A.X-patent-tapt-mlm",

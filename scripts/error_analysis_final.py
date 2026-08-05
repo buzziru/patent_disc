@@ -18,6 +18,9 @@
 실행: `uv run python scripts/error_analysis_final.py`
 산출: `output/error_analysis_modernbert-patent-len4096-op.json`
       `output/final_model_comparison.json`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import json

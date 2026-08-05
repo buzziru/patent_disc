@@ -22,7 +22,7 @@
 | 문서 | 내용 |
 | --- | --- |
 | [data.md](./data/data.md) | 레이아웃·스키마·라벨 분포·분할 누수·데이터 클리닝 |
-| [data-pipeline.md](./data/data-pipeline.md) | zip 스트리밍 파싱 → HF Hub 업로드 → 소비 시 토큰화 |
+| [data-pipeline.md](./data/data-pipeline.md) | zip 스트리밍 파싱 → HF Hub 업로드 → 소비 시 토큰화 · **AI Hub 원본에서 데이터셋을 재생성하는 절차** |
 
 ### 실험 (`experiments/`)
 
@@ -90,6 +90,19 @@
 | **로컬 Windows(CPU)** | 데이터 전처리·통계·잡 제어 등 GPU가 필요 없는 작업. GPU 훈련은 불가 |
 
 > ⚠️ **idle GPU는 계속 과금된다.** Colab은 끝나면 반드시 `colab stop`(또는 self-clean되는 `colab run`)을 부른다. Lightning Job은 종료 시 머신이 자동 회수된다.
+
+## 공개 산출물 (Hugging Face)
+
+공개하는 것은 모델 둘뿐이다.
+
+| 리포 | 역할 |
+| --- | --- |
+| [`ingyoun/A.X-patent-len4096-op`](https://huggingface.co/ingyoun/A.X-patent-len4096-op) | 배포 모델(`16_01`). `label_mappings.json`을 함께 담는다 |
+| [`ingyoun/kobert-patent-baseline`](https://huggingface.co/ingyoun/kobert-patent-baseline) | 재현한 KoBERT 비교선 — 개선 주장의 검증 수단 |
+
+**실험 런 모델과 가공 데이터셋은 공개하지 않는다.** 따라서 아래 문서들이 적은 리포 ID(`A.X-patent-maxlen8192`·`-len512-*`·`-tapt-mlm`·`-seed153`·`patent-clean-text*` 등)는 조회되지 않으며, **당시 실행의 기록**으로 읽는다. 데이터셋을 AI Hub 원본에서 재생성하는 절차는 [data/data-pipeline.md](./data/data-pipeline.md)「가공 데이터셋은 배포하지 않는다 — 재현 경로」에 있다.
+
+로짓은 저장소에 동봉돼 있어(`output/logits_*.npy`) 이 모델들을 받지 않아도 `scripts/`의 분석은 전부 재현된다.
 
 ## 환경 값
 

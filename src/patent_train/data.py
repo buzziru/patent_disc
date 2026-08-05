@@ -7,6 +7,9 @@ splits는 `train`/`val`/`test`.
 
 단계는 분리돼 있다 — `load_tokenizer()` → `load()`(원본) → `prepare()`(절단·캐시).
 prep 캐시가 이미 있으면 원본이 필요 없으므로 `load()`는 다운로드를 건너뛴다.
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import os

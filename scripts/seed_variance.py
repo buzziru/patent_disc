@@ -20,6 +20,9 @@ eff_batch 128·lr 4.8e-4·12 epoch·정리 데이터. 두 런 모두 24회 평�
 
 실행: `uv run python scripts/seed_variance.py`
 산출: `output/seed_variance.json`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import json

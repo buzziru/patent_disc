@@ -13,6 +13,9 @@
 
 실행: `uv run python scripts/eval_noise_bootstrap.py [--B 2000] [--seed 42]`
 산출: `output/eval_noise_bootstrap.json`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import argparse

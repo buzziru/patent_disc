@@ -21,6 +21,9 @@ KD 타깃 진단도 같은 배터리로 낸다 — teacher 확률이 포화될�
 
 실행: `uv run python scripts/loss_mass_decomposition.py`
 산출: `output/loss_mass_decomposition.json`
+
+참조하는 HF 데이터셋은 공개 배포하지 않는다 — 재생성 절차는
+`docs/data/data-pipeline.md`「가공 데이터셋은 배포하지 않는다 — 재현 경로」.
 """
 
 import json
