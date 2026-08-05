@@ -4,6 +4,8 @@
 
 **배포 모델: [`ingyoun/A.X-patent-len4096-op`](https://huggingface.co/ingyoun/A.X-patent-len4096-op)** — `skt/A.X-Encoder-base`(한국어 ModernBERT)를 4,096 토큰 창에서 파인튜닝했다.
 
+**평가 탐색기: [ingyoun/patent-eval-demo](https://ingyoun-patent-eval-demo.static.hf.space)** — 저장된 로짓으로 채점 방식·임계값·문서 길이별 결과를 직접 조작해 보는 정적 데모다(소스 `hf-spaces/patent-eval-demo/`).
+
 ## 결과
 
 test 11,244건 · τ=0.5 · 같은 문서·같은 순서에서 측정.
@@ -39,6 +41,7 @@ test 11,244건 · τ=0.5 · 같은 문서·같은 순서에서 측정.
 | `src/patent_train/` | 훈련 하니스 — 노트북은 `TrainConfig`만 주입한다 |
 | `scripts/` | 오류 분석·진단 스크립트 |
 | `output/` | 지표·오류 분석 결과(json)와 **모델별 로짓 덤프(npy)** |
+| `hf-spaces/patent-eval-demo/` | 공개 평가 탐색기(정적) — 데이터는 `scripts/build_demo_payload.py`가 생성한다 |
 
 **모델별 로짓과 정답 라벨을 저장소에 포함한다**(`output/logits_*.npy` · `output/gold_labels_*.json`). 그래서 **GPU도, 모델 가중치도, 데이터셋도 없이** 임계값 스윕·오류 분석·모델 간 비교가 그대로 돈다. 배포 모델의 전체 오류 분석은 아래 한 줄이다.
 
