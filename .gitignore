@@ -6,7 +6,7 @@ vendor/
 /.vscode/
 owner/
 pyrightconfig.json
-.claude/rules/
+.claude/
 
 # 로컬 실행 산출물(노트북·훈련) — 실수 커밋 방지
 __pycache__/
